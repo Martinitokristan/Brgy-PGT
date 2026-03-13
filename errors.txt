@@ -1,0 +1,59 @@
+﻿.next/dev/types/validator.ts(333,31): error TS2344: Type 'typeof import("C:/xampp/htdocs/brgypgt/app/api/notifications/[id]/read/route")' does not satisfy the constraint 'RouteHandlerConfig<"/api/notifications/[id]/read">'.
+  Types of property 'POST' are incompatible.
+    Type '(_request: Request, { params }: Params) => Promise<NextResponse<{ error: string; }> | NextResponse<{ ok: boolean; }>>' is not assignable to type '(request: NextRequest, context: { params: Promise<{ id: string; }>; }) => void | Response | Promise<void | Response>'.
+      Types of parameters '__1' and 'context' are incompatible.
+        Type '{ params: Promise<{ id: string; }>; }' is not assignable to type 'Params'.
+          Types of property 'params' are incompatible.
+            Property 'id' is missing in type 'Promise<{ id: string; }>' but required in type '{ id: string; }'.
+.next/dev/types/validator.ts(360,31): error TS2344: Type 'typeof import("C:/xampp/htdocs/brgypgt/app/api/posts/[id]/comments/[commentId]/like/route")' does not satisfy the constraint 'RouteHandlerConfig<"/api/posts/[id]/comments/[commentId]/like">'.
+  Types of property 'POST' are incompatible.
+    Type '(_request: Request, { params }: Params) => Promise<NextResponse<{ error: string; }> | NextResponse<{ liked_by: any; }>>' is not assignable to type '(request: NextRequest, context: { params: Promise<{ id: string; commentId: string; }>; }) => void | Response | Promise<void | Response>'.
+      Types of parameters '__1' and 'context' are incompatible.
+        Type '{ params: Promise<{ id: string; commentId: string; }>; }' is not assignable to type 'Params'.
+          Types of property 'params' are incompatible.
+            Type 'Promise<{ id: string; commentId: string; }>' is missing the following properties from type '{ id: string; commentId: string; }': id, commentId
+.next/dev/types/validator.ts(369,31): error TS2344: Type 'typeof import("C:/xampp/htdocs/brgypgt/app/api/posts/[id]/comments/route")' does not satisfy the constraint 'RouteHandlerConfig<"/api/posts/[id]/comments">'.
+  Types of property 'GET' are incompatible.
+    Type '(_request: Request, { params }: Params) => Promise<NextResponse<any[]> | NextResponse<{ error: string; }>>' is not assignable to type '(request: NextRequest, context: { params: Promise<{ id: string; }>; }) => void | Response | Promise<void | Response>'.
+      Types of parameters '__1' and 'context' are incompatible.
+        Type '{ params: Promise<{ id: string; }>; }' is not assignable to type 'Params'.
+          Types of property 'params' are incompatible.
+            Property 'id' is missing in type 'Promise<{ id: string; }>' but required in type '{ id: string; }'.
+.next/dev/types/validator.ts(378,31): error TS2344: Type 'typeof import("C:/xampp/htdocs/brgypgt/app/api/posts/[id]/reactions/route")' does not satisfy the constraint 'RouteHandlerConfig<"/api/posts/[id]/reactions">'.
+  Types of property 'GET' are incompatible.
+    Type '(_request: Request, { params }: Params) => Promise<NextResponse<{ error: string; }> | NextResponse<{ counts: Record<string, number>; myReaction: string | null; }>>' is not assignable to type '(request: NextRequest, context: { params: Promise<{ id: string; }>; }) => void | Response | Promise<void | Response>'.
+      Types of parameters '__1' and 'context' are incompatible.
+        Type '{ params: Promise<{ id: string; }>; }' is not assignable to type 'Params'.
+          Types of property 'params' are incompatible.
+            Property 'id' is missing in type 'Promise<{ id: string; }>' but required in type '{ id: string; }'.
+.next/dev/types/validator.ts(387,31): error TS2344: Type 'typeof import("C:/xampp/htdocs/brgypgt/app/api/posts/[id]/route")' does not satisfy the constraint 'RouteHandlerConfig<"/api/posts/[id]">'.
+  Types of property 'GET' are incompatible.
+    Type '(_request: Request, { params }: Params) => Promise<NextResponse<{ error: string; }> | NextResponse<{ id: any; title: any; description: any; purpose: any; urgency_level: any; status: any; ... 4 more ...; profiles: { ...; }[]; }>>' is not assignable to type '(request: NextRequest, context: { params: Promise<{ id: string; }>; }) => void | Response | Promise<void | Response>'.
+      Types of parameters '__1' and 'context' are incompatible.
+        Type '{ params: Promise<{ id: string; }>; }' is not assignable to type 'Params'.
+          Types of property 'params' are incompatible.
+            Property 'id' is missing in type 'Promise<{ id: string; }>' but required in type '{ id: string; }'.
+.next/dev/types/validator.ts(396,31): error TS2344: Type 'typeof import("C:/xampp/htdocs/brgypgt/app/api/posts/comments/[id]/route")' does not satisfy the constraint 'RouteHandlerConfig<"/api/posts/comments/[id]">'.
+  Types of property 'PATCH' are incompatible.
+    Type '(request: Request, { params }: Params) => Promise<NextResponse<{ error: string; }> | NextResponse<{ ok: boolean; }>>' is not assignable to type '(request: NextRequest, context: { params: Promise<{ id: string; }>; }) => void | Response | Promise<void | Response>'.
+      Types of parameters '__1' and 'context' are incompatible.
+        Type '{ params: Promise<{ id: string; }>; }' is not assignable to type 'Params'.
+          Types of property 'params' are incompatible.
+            Property 'id' is missing in type 'Promise<{ id: string; }>' but required in type '{ id: string; }'.
+.next/dev/types/validator.ts(414,31): error TS2344: Type 'typeof import("C:/xampp/htdocs/brgypgt/app/api/profile/[id]/follow/route")' does not satisfy the constraint 'RouteHandlerConfig<"/api/profile/[id]/follow">'.
+  Types of property 'POST' are incompatible.
+    Type '(_request: Request, { params }: Params) => Promise<NextResponse<{ error: string; }> | NextResponse<{ is_following: boolean; }>>' is not assignable to type '(request: NextRequest, context: { params: Promise<{ id: string; }>; }) => void | Response | Promise<void | Response>'.
+      Types of parameters '__1' and 'context' are incompatible.
+        Type '{ params: Promise<{ id: string; }>; }' is not assignable to type 'Params'.
+          Types of property 'params' are incompatible.
+            Property 'id' is missing in type 'Promise<{ id: string; }>' but required in type '{ id: string; }'.
+.next/dev/types/validator.ts(423,31): error TS2344: Type 'typeof import("C:/xampp/htdocs/brgypgt/app/api/profile/[id]/route")' does not satisfy the constraint 'RouteHandlerConfig<"/api/profile/[id]">'.
+  Types of property 'GET' are incompatible.
+    Type '(_request: Request, { params }: Params) => Promise<NextResponse<{ error: string; }> | NextResponse<{ user: any; stats: { posts_count: number; followers_count: number; following_count: number; joined_date: string; }; posts: any[]; is_following: boolean; }>>' is not assignable to type '(request: NextRequest, context: { params: Promise<{ id: string; }>; }) => void | Response | Promise<void | Response>'.
+      Types of parameters '__1' and 'context' are incompatible.
+        Type '{ params: Promise<{ id: string; }>; }' is not assignable to type 'Params'.
+          Types of property 'params' are incompatible.
+            Property 'id' is missing in type 'Promise<{ id: string; }>' but required in type '{ id: string; }'.
+app/(auth)/verify-device/page.tsx(9,22): error TS18047: 'search' is possibly 'null'.
+app/(auth)/verify-device/page.tsx(10,28): error TS18047: 'search' is possibly 'null'.
+app/api/admin/sms/route.ts(26,35): error TS1355: A 'const' assertions can only be applied to references to enum members, or string, number, boolean, array, or object literals.
