@@ -41,7 +41,7 @@ export async function GET() {
   const { data, error: profilesError } = await supabase
     .from("profiles")
     .select(
-      "id, name, email, role, is_approved, barangay_id, phone, purok_address, sex, birth_date, age, valid_id_path"
+      "id, name, email, role, is_approved, barangay_id, phone, purok_address, sex, birth_date, age, valid_id_path, created_at, barangays(name)"
     )
     .order("created_at", { ascending: false })
     .limit(200);

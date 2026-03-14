@@ -1,9 +1,9 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { Suspense, FormEvent, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function VerifyDevicePage() {
+function VerifyDeviceForm() {
   const router = useRouter();
   const search = useSearchParams();
   const emailParam = search?.get("email") ?? "";
@@ -108,3 +108,10 @@ export default function VerifyDevicePage() {
   );
 }
 
+export default function VerifyDevicePage() {
+  return (
+    <Suspense fallback={<div className="flex flex-1 items-center justify-center p-10 mt-20"><div className="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full" /></div>}>
+      <VerifyDeviceForm />
+    </Suspense>
+  );
+}

@@ -1,119 +1,107 @@
 "use client";
 
-import useSWR from "swr";
-import { 
-  Bell, 
-  CheckCircle2, 
-  MessageCircle, 
-  AlertTriangle,
-  Clock,
-  ExternalLink
-} from "lucide-react";
-import Link from "next/link";
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+import useSWR, { mutate as globalMutate } from "swr";
+import { Bell } from "lucide-react";
 
 type Notification = {
   id: number;
   type: string;
-  title: string;
   message: string;
   is_read: boolean;
-  post_id: number | null;
   created_at: string;
+  post_id?: number | null;
 };
 
-export default function NotificationsPage() {
-  const { data: notifications, mutate } = useSWR<Notification[]>("/api/notifications", fetcher);
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-  async function markAllAsRead() {
+function formatDate(dateStr: string) {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("en-US", { month: "numeric", day: "numeric", year: "numeric" });
+}
+
+export default function NotificationsPage() {
+  const { data: notifications, isLoading, mutate } = useSWR<Notification[]>(
+    "/api/notifications",
+    fetcher
+  );
+
+  async function markAllRead() {
     await fetch("/api/notifications", { method: "PATCH" });
-    void mutate();
+    mutate();
   }
 
-  const unreadCount = notifications?.filter(n => !n.is_read).length || 0;
+  const unread = (notifications ?? []).filter((n) => !n.is_read);
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col py-6 sm:py-10">
-      <div className="flex items-center justify-between px-4 sm:px-0">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-100 text-blue-600">
-            <Bell className="h-5 w-5" />
+    <div>
+      {/* Page Header */}
+      <div className="bg-white px-4 py-4 border-b border-slate-100">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Bell className="h-5 w-5 text-slate-800" />
+            <h1 className="text-lg font-bold text-slate-900">Notifications</h1>
           </div>
-          <h1 className="text-2xl font-black text-slate-900">Notifications</h1>
+          {unread.length > 0 && (
+            <button
+              onClick={markAllRead}
+              className="text-xs font-semibold text-blue-600 hover:underline"
+            >
+              Mark all as read
+            </button>
+          )}
         </div>
-        
-        {unreadCount > 0 && (
-          <button 
-            onClick={markAllAsRead}
-            className="text-sm font-bold text-blue-600 transition-colors hover:text-blue-700 hover:underline"
-          >
-            Mark all as read
-          </button>
-        )}
       </div>
 
-      <div className="mt-8 space-y-3 px-4 sm:px-0">
-        {notifications?.map((notif) => (
-          <div 
+      <div className="px-4 py-4 space-y-3">
+        {isLoading && (
+          <div className="flex flex-col gap-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-20 animate-pulse rounded-2xl bg-white" />
+            ))}
+          </div>
+        )}
+
+        {!isLoading && (notifications ?? []).length === 0 && (
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-white shadow-sm">
+              <Bell className="h-10 w-10 text-slate-300" />
+            </div>
+            <p className="text-base font-bold text-slate-800">You&apos;re all caught up!</p>
+            <p className="mt-1 text-sm text-slate-400">No notifications to show right now.</p>
+          </div>
+        )}
+
+        {(notifications ?? []).map((notif) => (
+          <div
             key={notif.id}
-            className={`group relative flex gap-4 rounded-3xl border p-4 transition-all ${
-              notif.is_read 
-                ? "border-slate-100 bg-white" 
-                : "border-blue-100 bg-blue-50/50 shadow-sm"
+            className={`relative flex items-start gap-3 rounded-2xl bg-white px-4 py-4 shadow-sm transition-all ${
+              !notif.is_read ? "border-l-4 border-blue-500" : "border-l-4 border-transparent"
             }`}
           >
             {/* Icon */}
-            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${
-              notif.type === "urgent" ? "bg-rose-100 text-rose-600" :
-              notif.type === "comment" ? "bg-blue-100 text-blue-600" :
-              "bg-slate-100 text-slate-600"
-            }`}>
-              {notif.type === "urgent" ? <AlertTriangle className="h-6 w-6" /> :
-               notif.type === "comment" ? <MessageCircle className="h-6 w-6" /> :
-               <Bell className="h-6 w-6" />}
+            <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50">
+              <Bell className="h-5 w-5 text-blue-500" />
             </div>
 
             {/* Content */}
-            <div className="flex-1 space-y-1">
-              <div className="flex items-start justify-between">
-                <h3 className={`text-sm font-bold ${notif.is_read ? "text-slate-900" : "text-blue-900"}`}>
-                  {notif.title}
-                </h3>
-                <span className="flex items-center gap-1 text-[10px] font-bold text-slate-400">
-                  <Clock className="h-3 w-3" />
-                  {new Date(notif.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
-              </div>
-              <p className="text-sm text-slate-600">{notif.message}</p>
-              
-              {notif.post_id && (
-                <Link 
-                  href={`/posts/${notif.post_id}`}
-                  className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:underline"
-                >
-                  <span>View Post</span>
-                  <ExternalLink className="h-3 w-3" />
-                </Link>
-              )}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-slate-900 leading-snug line-clamp-2">
+                {notif.message}
+              </p>
+              <p className="mt-1 text-xs text-slate-400">{formatDate(notif.created_at)}</p>
             </div>
 
-            {/* Unread Dot */}
-            {!notif.is_read && (
-              <div className="absolute right-4 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-blue-600"></div>
+            {/* View Button */}
+            {notif.post_id && (
+              <a
+                href={`/feed`}
+                className="shrink-0 self-center rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-blue-700"
+              >
+                View
+              </a>
             )}
           </div>
         ))}
-
-        {notifications?.length === 0 && (
-          <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50/50 py-20 text-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-slate-300">
-              <CheckCircle2 className="h-8 w-8" />
-            </div>
-            <h3 className="font-bold text-slate-900">All caught up!</h3>
-            <p className="max-w-[200px] text-sm text-slate-500">You don't have any new notifications at the moment.</p>
-          </div>
-        )}
       </div>
     </div>
   );

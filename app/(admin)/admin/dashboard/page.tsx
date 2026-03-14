@@ -1,173 +1,288 @@
 "use client";
 
-import { 
-  FileText, 
-  Users, 
-  Clock, 
-  CheckCircle2, 
-  AlertTriangle, 
-  TrendingUp,
-  Download,
+import useSWR from "swr";
+import Link from "next/link";
+import {
+  FileText,
+  Users,
+  AlertTriangle,
+  Clock,
+  CheckCircle2,
+  Activity,
   Calendar,
-  ShieldCheck
 } from "lucide-react";
 
-export default function AdminDashboardPage() {
-  const stats = [
-    { label: "Total Posts", value: "1", icon: FileText, color: "blue", trend: "+12%" },
-    { label: "Active Urgent", value: "0", icon: AlertTriangle, color: "red", trend: "0%" },
-    { label: "Pending", value: "0", icon: Clock, color: "orange", trend: "0%" },
-    { label: "In Progress", value: "0", icon: TrendingUp, color: "indigo", trend: "0%" },
-    { label: "Resolved", value: "1", icon: CheckCircle2, color: "emerald", trend: "+5%" },
-    { label: "Residents", value: "5", icon: Users, color: "blue", trend: "+2" },
-  ];
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+type Stats = {
+  totalPosts: number;
+  pendingPosts: number;
+  inProgressPosts: number;
+  resolvedPosts: number;
+  urgentPosts: number;
+  totalResidents: number;
+  approvedResidents: number;
+  byPurpose: Record<string, number>;
+  byUrgency: Record<string, number>;
+};
+
+const COLORS = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"];
+
+function DonutChart({
+  data,
+  size = 120,
+}: {
+  data: { label: string; value: number; color: string }[];
+  size?: number;
+}) {
+  const total = data.reduce((s, d) => s + d.value, 0);
+  if (total === 0) {
+    return (
+      <div
+        style={{ width: size, height: size }}
+        className="flex items-center justify-center rounded-full bg-slate-100 text-xs text-slate-400"
+      >
+        No data
+      </div>
+    );
+  }
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = (size / 2) * 0.7;
+  const innerR = (size / 2) * 0.44;
+  let cumulative = 0;
+  const slices = data.map((d) => {
+    const pct = d.value / total;
+    const start = cumulative;
+    cumulative += pct;
+    const startAngle = start * 2 * Math.PI - Math.PI / 2;
+    const endAngle = cumulative * 2 * Math.PI - Math.PI / 2;
+    const x1 = cx + r * Math.cos(startAngle);
+    const y1 = cy + r * Math.sin(startAngle);
+    const x2 = cx + r * Math.cos(endAngle);
+    const y2 = cy + r * Math.sin(endAngle);
+    const ix1 = cx + innerR * Math.cos(startAngle);
+    const iy1 = cy + innerR * Math.sin(startAngle);
+    const ix2 = cx + innerR * Math.cos(endAngle);
+    const iy2 = cy + innerR * Math.sin(endAngle);
+    const largeArc = pct > 0.5 ? 1 : 0;
+    const path = [
+      `M ${x1} ${y1}`,
+      `A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2}`,
+      `L ${ix2} ${iy2}`,
+      `A ${innerR} ${innerR} 0 ${largeArc} 0 ${ix1} ${iy1}`,
+      "Z",
+    ].join(" ");
+    return { ...d, path };
+  });
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-xl shadow-blue-500/20">
-            <ShieldCheck className="h-7 w-7" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Admin Dashboard</h1>
-            <p className="text-sm font-medium text-slate-500">Welcome back, Administrator. Here's what's happening today.</p>
-          </div>
-        </div>
-        <div className="flex gap-3">
-          <button className="flex h-11 items-center gap-2 rounded-xl bg-white px-4 text-sm font-bold text-slate-700 shadow-sm ring-1 ring-slate-200 transition-all hover:bg-slate-50 active:scale-95">
-            <Calendar className="h-4 w-4" />
-            March 13, 2026
-          </button>
-          <button className="flex h-11 items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition-all hover:bg-blue-700 active:scale-95">
-            <Download className="h-4 w-4" />
-            Reports
-          </button>
-        </div>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      {slices.map((s, i) => (
+        <path key={i} d={s.path} fill={s.color} />
+      ))}
+      <circle cx={cx} cy={cy} r={innerR * 0.9} fill="white" />
+      <text
+        x={cx}
+        y={cy + 1}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontSize={size * 0.14}
+        fontWeight="700"
+        fill="#1e293b"
+      >
+        {total}
+      </text>
+    </svg>
+  );
+}
+
+export default function AdminDashboardPage() {
+  const { data: stats, isLoading } = useSWR<Stats>("/api/admin/stats", fetcher);
+
+  const statCards = [
+    {
+      label: "Total Posts",
+      value: stats?.totalPosts ?? 0,
+      icon: FileText,
+      color: "border-blue-500",
+      bg: "bg-blue-50",
+      text: "text-blue-600",
+    },
+    {
+      label: "Urgent Active",
+      value: stats?.urgentPosts ?? 0,
+      icon: AlertTriangle,
+      color: "border-red-500",
+      bg: "bg-red-50",
+      text: "text-red-600",
+    },
+    {
+      label: "Pending",
+      value: stats?.pendingPosts ?? 0,
+      icon: Clock,
+      color: "border-orange-500",
+      bg: "bg-orange-50",
+      text: "text-orange-600",
+    },
+    {
+      label: "In Progress",
+      value: stats?.inProgressPosts ?? 0,
+      icon: Activity,
+      color: "border-teal-500",
+      bg: "bg-teal-50",
+      text: "text-teal-600",
+    },
+    {
+      label: "Resolved",
+      value: stats?.resolvedPosts ?? 0,
+      icon: CheckCircle2,
+      color: "border-green-500",
+      bg: "bg-green-50",
+      text: "text-green-600",
+    },
+    {
+      label: "Total Residents",
+      value: stats?.totalResidents ?? 0,
+      icon: Users,
+      color: "border-indigo-500",
+      bg: "bg-indigo-50",
+      text: "text-indigo-600",
+    },
+  ];
+
+  const byPurposeData = Object.entries(stats?.byPurpose ?? {}).map(([label, value], i) => ({
+    label,
+    value,
+    color: COLORS[i % COLORS.length],
+  }));
+
+  const byUrgencyData = Object.entries(stats?.byUrgency ?? {}).map(([label, value], i) => ({
+    label,
+    value,
+    color: ["#ef4444", "#f59e0b", "#10b981"][i % 3],
+  }));
+
+  return (
+    <div className="flex flex-1 flex-col gap-5 p-4 pb-8 sm:p-6">
+      {/* Action Buttons */}
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <Link
+          href="/admin/posts"
+          className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-blue-600 py-3.5 text-sm font-bold text-white shadow-md hover:bg-blue-700 transition-colors"
+        >
+          <FileText className="h-4 w-4" />
+          Manage All Posts
+        </Link>
+        <Link
+          href="/admin/events"
+          className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-blue-600 py-3.5 text-sm font-bold text-white shadow-md hover:bg-blue-700 transition-colors"
+        >
+          <Calendar className="h-4 w-4" />
+          Manage Events
+        </Link>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        {stats.map((stat) => {
-          const Icon = stat.icon;
-          const colorClasses: Record<string, string> = {
-            blue: "bg-blue-600",
-            red: "bg-red-500",
-            orange: "bg-amber-500",
-            indigo: "bg-indigo-500",
-            emerald: "bg-emerald-500"
-          };
-          const colorClass = colorClasses[stat.color] || "bg-blue-600";
-
+      {/* Stat Cards Grid */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {statCards.map((card) => {
+          const Icon = card.icon;
           return (
-            <div 
-              key={stat.label} 
-              className="group overflow-hidden rounded-[32px] bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] ring-1 ring-slate-200/60 transition-all hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)] hover:ring-slate-300/60"
+            <div
+              key={card.label}
+              className={`flex flex-col gap-2 rounded-2xl border-t-4 bg-white px-4 py-4 shadow-sm ${card.color}`}
             >
-              <div className={`mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl ${colorClass} text-white shadow-lg transition-transform group-hover:scale-110`}>
-                <Icon className="h-5 w-5" />
+              <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${card.bg}`}>
+                <Icon className={`h-5 w-5 ${card.text}`} />
               </div>
-              <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
-              <div className="mt-1 flex items-center justify-between">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{stat.label}</p>
-                <span className={`text-[10px] font-bold ${stat.trend.startsWith("+") ? "text-emerald-600" : "text-slate-400"}`}>
-                  {stat.trend}
-                </span>
-              </div>
-              <div className={`mt-4 h-1 w-full rounded-full bg-slate-100`}>
-                <div className={`h-1 rounded-full ${colorClass}`} style={{ width: stat.value === "0" ? "0%" : "60%" }} />
-              </div>
+              {isLoading ? (
+                <div className="h-7 w-16 animate-pulse rounded-lg bg-slate-100" />
+              ) : (
+                <p className="text-2xl font-black text-slate-900">{card.value}</p>
+              )}
+              <p className="text-xs font-semibold text-slate-500">{card.label}</p>
             </div>
           );
         })}
       </div>
 
-      {/* Analytics Section */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Posts by Purpose Chart Placeholder */}
-        <div className="rounded-[32px] bg-white p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] ring-1 ring-slate-200/60">
-          <div className="mb-8 flex items-center justify-between">
-            <h2 className="text-xl font-bold text-slate-900">Posts by Purpose</h2>
-            <select className="rounded-lg border-0 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-200 focus:ring-2 focus:ring-blue-600/10">
-              <option>Last 30 days</option>
-              <option>Last 7 days</option>
-            </select>
-          </div>
-          
-          <div className="flex flex-col items-center justify-center py-4">
-            <div className="relative flex h-64 w-64 items-center justify-center">
-              {/* Fake Donut Chart with SVG */}
-              <svg className="h-full w-full -rotate-90 transform" viewBox="0 0 100 100">
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="40"
-                  fill="transparent"
-                  stroke="#f1f5f9"
-                  strokeWidth="12"
-                />
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="40"
-                  fill="transparent"
-                  stroke="#ef4444"
-                  strokeWidth="12"
-                  strokeDasharray="251.2"
-                  strokeDashoffset="62.8"
-                  strokeLinecap="round"
-                />
-              </svg>
-              <div className="absolute flex flex-col items-center">
-                <p className="text-4xl font-black text-slate-900">1</p>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total Posts</p>
-              </div>
-            </div>
-            
-            <div className="mt-8 flex flex-wrap justify-center gap-6">
-              <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-red-500" />
-                <span className="text-xs font-bold text-slate-600">Emergency (100%)</span>
-              </div>
-              <div className="flex items-center gap-2 opacity-30">
-                <div className="h-3 w-3 rounded-full bg-blue-500" />
-                <span className="text-xs font-bold text-slate-600">Complaint</span>
-              </div>
-              <div className="flex items-center gap-2 opacity-30">
-                <div className="h-3 w-3 rounded-full bg-amber-500" />
-                <span className="text-xs font-bold text-slate-600">Suggestion</span>
-              </div>
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {/* Posts by Purpose */}
+        <div className="rounded-2xl bg-white p-5 shadow-sm">
+          <p className="mb-4 text-sm font-bold text-slate-800">Posts by Purpose</p>
+          <div className="flex items-center gap-5">
+            <DonutChart data={byPurposeData} size={110} />
+            <div className="flex flex-col gap-2 min-w-0">
+              {byPurposeData.map((d) => (
+                <div key={d.label} className="flex items-center gap-2 min-w-0">
+                  <div
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ background: d.color }}
+                  />
+                  <span className="truncate text-[11px] font-semibold text-slate-600">
+                    {d.label}
+                  </span>
+                  <span className="ml-auto text-[11px] font-black text-slate-800">{d.value}</span>
+                </div>
+              ))}
+              {byPurposeData.length === 0 && (
+                <p className="text-xs text-slate-400">No posts yet</p>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Recent Activity Card */}
-        <div className="rounded-[32px] bg-white p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] ring-1 ring-slate-200/60">
-          <h2 className="mb-6 text-xl font-bold text-slate-900">Recent Barangay Activity</h2>
-          <div className="space-y-6">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex gap-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-400">
-                  <Users className="h-5 w-5" />
+        {/* Posts by Urgency */}
+        <div className="rounded-2xl bg-white p-5 shadow-sm">
+          <p className="mb-4 text-sm font-bold text-slate-800">Posts by Urgency</p>
+          <div className="flex items-center gap-5">
+            <DonutChart data={byUrgencyData} size={110} />
+            <div className="flex flex-col gap-2 min-w-0">
+              {byUrgencyData.map((d) => (
+                <div key={d.label} className="flex items-center gap-2 min-w-0">
+                  <div
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ background: d.color }}
+                  />
+                  <span className="truncate text-[11px] font-semibold text-slate-600 capitalize">
+                    {d.label}
+                  </span>
+                  <span className="ml-auto text-[11px] font-black text-slate-800">{d.value}</span>
                 </div>
-                <div className="flex-1 border-b border-slate-50 pb-6 last:border-0 last:pb-0">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-bold text-slate-900">New Resident Registered</p>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">2h ago</span>
-                  </div>
-                  <p className="mt-1 text-xs font-medium text-slate-500">A new resident from Purok {i} has joined the platform.</p>
-                </div>
-              </div>
-            ))}
+              ))}
+              {byUrgencyData.length === 0 && (
+                <p className="text-xs text-slate-400">No posts yet</p>
+              )}
+            </div>
           </div>
-          <button className="mt-8 w-full rounded-2xl bg-slate-50 py-4 text-xs font-bold text-slate-600 transition-all hover:bg-slate-100">
-            View All Activity
-          </button>
+        </div>
+      </div>
+
+      {/* Status Overview */}
+      <div className="rounded-2xl bg-white p-5 shadow-sm">
+        <p className="mb-4 text-sm font-bold text-slate-800">Status Overview</p>
+        <div className="flex flex-col gap-3">
+          {[
+            { label: "Pending", value: stats?.pendingPosts ?? 0, color: "bg-orange-500", pct: stats?.totalPosts ? ((stats.pendingPosts / stats.totalPosts) * 100) : 0 },
+            { label: "In Progress", value: stats?.inProgressPosts ?? 0, color: "bg-teal-500", pct: stats?.totalPosts ? ((stats.inProgressPosts / stats.totalPosts) * 100) : 0 },
+            { label: "Resolved", value: stats?.resolvedPosts ?? 0, color: "bg-green-500", pct: stats?.totalPosts ? ((stats.resolvedPosts / stats.totalPosts) * 100) : 0 },
+          ].map((row) => (
+            <div key={row.label}>
+              <div className="mb-1 flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-600">{row.label}</span>
+                <span className="text-xs font-bold text-slate-800">{row.value}</span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-slate-100">
+                <div
+                  className={`h-2 rounded-full transition-all duration-500 ${row.color}`}
+                  style={{ width: `${Math.min(row.pct, 100)}%` }}
+                />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
   );
 }
-
-

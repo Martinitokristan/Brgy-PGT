@@ -25,6 +25,20 @@ export async function GET(_request: Request, props: Params) {
     return NextResponse.json({ error: "Profile not found" }, { status: 404 });
   }
 
+  // 1.5 Privacy Check: Residents/Riders cannot view Admin profiles
+  if (profile.role === "admin" && currentUserId !== targetUserId) {
+    // Check if the current user is also an admin
+    const { data: currentUserProfile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", currentUserId)
+      .single();
+
+    if (currentUserProfile?.role !== "admin") {
+      return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+    }
+  }
+
   // 2. Fetch Stats
   const [postsCount, followersCount, followingCount] = await Promise.all([
     supabase.from("posts").select("id", { count: "exact", head: true }).eq("user_id", targetUserId),
@@ -46,10 +60,39 @@ export async function GET(_request: Request, props: Params) {
   // 4. Fetch User Posts (latest 10)
   const { data: posts } = await supabase
     .from("posts")
-    .select("*, profiles(name)")
+    .select(`
+      *,
+      profiles(name),
+      reactions(type, user_id),
+      comments(id)
+    `)
     .eq("user_id", targetUserId)
     .order("created_at", { ascending: false })
     .limit(10);
+
+  // Transform posts to include counts
+  const transformedPosts = (posts ?? []).map((post: any) => {
+    const reactions = post.reactions || [];
+    const counts: Record<string, number> = {};
+    let myReaction = null;
+
+    for (const r of reactions) {
+      counts[r.type] = (counts[r.type] ?? 0) + 1;
+      if (currentUserId && r.user_id === currentUserId) {
+        myReaction = r.type;
+      }
+    }
+
+    return {
+      ...post,
+      profiles: post.profiles,
+      reaction_counts: counts,
+      my_reaction: myReaction,
+      comment_count: post.comments?.length || 0,
+      reactions: undefined,
+      comments: undefined,
+    };
+  });
 
   return NextResponse.json({
     user: profile,
@@ -62,7 +105,7 @@ export async function GET(_request: Request, props: Params) {
         year: "numeric"
       })
     },
-    posts: posts ?? [],
+    posts: transformedPosts,
     is_following: isFollowing
   });
 }

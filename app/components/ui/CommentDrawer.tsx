@@ -12,6 +12,7 @@ import {
   MoreHorizontal
 } from "lucide-react";
 import useSWR from "swr";
+import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { formatRelativeTime } from "@/app/utils/dateUtils";
 
@@ -44,6 +45,9 @@ export default function CommentDrawer({ postId, isOpen, onClose, me }: CommentDr
   const [newComment, setNewComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const isAdmin = me?.role === "admin";
+  const profileBaseUrl = isAdmin ? "/admin/users" : "/profile";
 
   // Real-time comments
   useEffect(() => {
@@ -155,6 +159,7 @@ export default function CommentDrawer({ postId, isOpen, onClose, me }: CommentDr
                       key={comment.id} 
                       comment={comment} 
                       replies={thread[String(comment.id)] || []}
+                      profileBaseUrl={profileBaseUrl}
                     />
                   ))}
                 </div>
@@ -196,20 +201,24 @@ export default function CommentDrawer({ postId, isOpen, onClose, me }: CommentDr
   );
 }
 
-function CommentItemFB({ comment, replies }: { comment: Comment, replies: Comment[] }) {
+function CommentItemFB({ comment, replies, profileBaseUrl }: { comment: Comment, replies: Comment[], profileBaseUrl: string }) {
   return (
     <div className="flex gap-2">
       {/* Avatar */}
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#4267B2] font-bold text-white text-sm">
-        {comment.profiles?.name?.charAt(0) || "U"}
-      </div>
+      <Link href={`${profileBaseUrl}/${comment.user_id}`}>
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#4267B2] font-bold text-white text-sm transition-transform hover:scale-105">
+          {comment.profiles?.name?.charAt(0) || "U"}
+        </div>
+      </Link>
 
       <div className="flex flex-col max-w-[85%]">
         {/* Bubble */}
         <div className="rounded-[18px] bg-[#F0F2F5] px-3.5 py-2">
-          <p className="text-[13px] font-bold text-slate-900 leading-tight mb-0.5">
-            {comment.profiles?.name || "Anonymous Resident"}
-          </p>
+          <Link href={`${profileBaseUrl}/${comment.user_id}`}>
+            <p className="text-[13px] font-bold text-slate-900 leading-tight mb-0.5 hover:underline">
+              {comment.profiles?.name || "Anonymous Resident"}
+            </p>
+          </Link>
           <p className="text-[15px] text-[#050505] leading-snug">
             {comment.body}
           </p>
@@ -228,7 +237,7 @@ function CommentItemFB({ comment, replies }: { comment: Comment, replies: Commen
         {replies.length > 0 && (
           <div className="mt-2 space-y-3">
             {replies.map(reply => (
-              <CommentItemFB key={reply.id} comment={reply} replies={[]} />
+              <CommentItemFB key={reply.id} comment={reply} replies={[]} profileBaseUrl={profileBaseUrl} />
             ))}
           </div>
         )}
@@ -236,3 +245,4 @@ function CommentItemFB({ comment, replies }: { comment: Comment, replies: Commen
     </div>
   );
 }
+

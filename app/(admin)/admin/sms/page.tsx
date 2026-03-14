@@ -2,6 +2,7 @@
 
 import useSWR from "swr";
 import { FormEvent, useState } from "react";
+import { Send, History } from "lucide-react";
 
 type SmsLog = {
   id: number;
@@ -16,11 +17,20 @@ type SmsLog = {
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
+function formatDateTime(d: string | null) {
+  if (!d) return "";
+  return new Date(d).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
 export default function AdminSmsPage() {
-  const { data, error, isLoading, mutate } = useSWR<SmsLog[]>(
-    "/api/admin/sms",
-    fetcher
-  );
+  const { data, error, isLoading, mutate } = useSWR<SmsLog[]>("/api/admin/sms", fetcher);
 
   const [to, setTo] = useState("");
   const [message, setMessage] = useState("");
@@ -55,131 +65,145 @@ export default function AdminSmsPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4 py-4 sm:py-6">
-      <header className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl font-semibold sm:text-2xl">SMS console</h1>
-          <p className="text-sm text-slate-600">
-            Send SMS to residents and view recent SMS logs.
-          </p>
+    <div className="flex flex-1 flex-col gap-5 p-4 pb-8 sm:p-6">
+      {/* Send Form Card */}
+      <div className="rounded-2xl bg-white p-5 shadow-sm">
+        <div className="mb-5 flex items-center gap-2">
+          <Send className="h-5 w-5 text-blue-600" />
+          <h1 className="text-lg font-bold text-slate-900">Send SMS Message</h1>
         </div>
-      </header>
 
-      <section className="rounded-lg border bg-white p-4 text-sm shadow-sm">
-        <h2 className="text-sm font-semibold sm:text-base">Send SMS</h2>
-        <form className="mt-3 space-y-3" onSubmit={handleSend}>
-          <div className="space-y-1.5">
-            <label className="block text-xs font-medium text-slate-700 sm:text-sm">
-              Recipient phone
+        <form onSubmit={handleSend} className="space-y-4">
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-slate-600">
+              To (Phone Number)
             </label>
             <input
               type="tel"
               required
               value={to}
               onChange={(e) => setTo(e.target.value)}
-              placeholder="+639XXXXXXXXX or 09XXXXXXXXX"
-              className="block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              placeholder="e.g. +639171234567"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
           </div>
-          <div className="space-y-1.5">
-            <label className="block text-xs font-medium text-slate-700 sm:text-sm">
-              Message
-            </label>
+
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-slate-600">Message</label>
             <textarea
-              rows={3}
+              rows={4}
               required
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              className="block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              placeholder="Type your message here..."
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 resize-none"
             />
           </div>
+
           <button
             type="submit"
             disabled={sending}
-            className="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-70"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 text-sm font-bold text-white shadow-md hover:bg-blue-700 disabled:opacity-60 transition-colors"
           >
+            <Send className="h-4 w-4" />
             {sending ? "Sending…" : "Send SMS"}
           </button>
+
           {sendError && (
-            <p className="text-xs text-red-600" role="alert">
+            <p className="rounded-xl bg-red-50 px-4 py-2 text-xs font-semibold text-red-600">
               {sendError}
             </p>
           )}
           {sendOk && (
-            <p className="text-xs text-green-600" role="status">
+            <p className="rounded-xl bg-green-50 px-4 py-2 text-xs font-semibold text-green-600">
               {sendOk}
             </p>
           )}
         </form>
-      </section>
+      </div>
 
-      <section className="rounded-lg border bg-white p-4 text-sm shadow-sm">
-        <h2 className="text-sm font-semibold sm:text-base">Recent SMS logs</h2>
+      {/* SMS Logs */}
+      <div className="rounded-2xl bg-white p-5 shadow-sm">
+        <div className="mb-4 flex items-center gap-2">
+          <History className="h-5 w-5 text-slate-600" />
+          <h2 className="text-base font-bold text-slate-900">SMS Logs</h2>
+        </div>
+
         {isLoading && (
-          <p className="mt-2 text-xs text-slate-600">Loading logs…</p>
+          <div className="flex flex-col gap-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-24 animate-pulse rounded-xl bg-slate-100" />
+            ))}
+          </div>
         )}
+
         {error && (
-          <p className="mt-2 text-xs text-red-600">
+          <p className="rounded-xl bg-red-50 px-4 py-3 text-xs font-semibold text-red-600">
             Failed to load logs. Make sure you are logged in as an admin.
           </p>
         )}
-        {!isLoading && !error && (
-          <div className="mt-3 max-h-80 overflow-auto rounded border border-slate-100">
-            <table className="min-w-full text-left text-xs">
-              <thead className="border-b bg-slate-50 text-[11px] uppercase tracking-wide text-slate-600">
-                <tr>
-                  <th className="px-2 py-1">Date</th>
-                  <th className="px-2 py-1">To</th>
-                  <th className="px-2 py-1">Status</th>
-                  <th className="px-2 py-1">Message</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(data ?? []).map((log) => (
-                  <tr key={log.id} className="border-t">
-                    <td className="px-2 py-1 align-top text-[11px] text-slate-500">
-                      {log.created_at}
-                    </td>
-                    <td className="px-2 py-1 align-top text-[11px] text-slate-700">
-                      {log.recipient_phone}
-                    </td>
-                    <td className="px-2 py-1 align-top text-[11px]">
-                      {log.status === "sent" ? (
-                        <span className="inline-flex rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-700">
-                          Sent
-                        </span>
-                      ) : (
-                        <span className="inline-flex rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-700">
-                          Failed
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-2 py-1 align-top text-[11px] text-slate-700">
-                      {log.message_content}
-                      {log.error_message && (
-                        <div className="mt-1 text-[10px] text-red-600">
-                          {log.error_message}
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {(data ?? []).length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={4}
-                      className="px-2 py-3 text-center text-[11px] text-slate-600"
-                    >
-                      No SMS logs yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+
+        {!isLoading && !error && (data ?? []).length === 0 && (
+          <p className="py-8 text-center text-sm text-slate-400">No SMS logs yet.</p>
         )}
-      </section>
+
+        <div className="flex flex-col gap-3">
+          {(data ?? []).map((log) => (
+            <div
+              key={log.id}
+              className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-4"
+            >
+              {/* Top Row */}
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-[11px] text-slate-400 flex-wrap">
+                  <span className="font-semibold">
+                    {formatDateTime(log.created_at)}
+                  </span>
+                </div>
+                <span
+                  className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                    log.status === "sent"
+                      ? "bg-green-100 text-green-700"
+                      : "bg-red-100 text-red-700"
+                  }`}
+                >
+                  {log.status === "sent" ? "Sent" : "Failed"}
+                </span>
+              </div>
+
+              {/* Recipient & Admin */}
+              <div className="mb-2 grid grid-cols-2 gap-2">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                    Recipient
+                  </p>
+                  <p className="text-sm font-semibold text-slate-800">{log.recipient_phone}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                    Admin
+                  </p>
+                  <p className="text-sm font-semibold text-slate-800">
+                    Barangay Pagatpatan Official Account
+                  </p>
+                </div>
+              </div>
+
+              {/* Message */}
+              <div className="rounded-lg bg-blue-50 px-3 py-2">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1">
+                  Message Content
+                </p>
+                <p className="text-xs text-slate-700 leading-relaxed">{log.message_content}</p>
+              </div>
+
+              {log.error_message && (
+                <p className="mt-2 text-[11px] text-red-600">{log.error_message}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
-

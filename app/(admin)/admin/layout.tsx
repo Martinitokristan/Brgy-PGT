@@ -33,8 +33,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     async function checkRole() {
       const res = await fetch("/api/profile/me");
       if (res.ok) {
-        const profile = await res.json();
-        if (profile.role !== "admin") {
+        const data = await res.json();
+        if (data.role !== "admin") {
           router.push("/feed");
         }
       } else {
@@ -43,6 +43,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     }
     void checkRole();
   }, [router]);
+
 
   const menuGroups = [
     {
@@ -58,18 +59,18 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     {
       title: "QUICK LINKS",
       items: [
-        { label: "Feed", href: "/feed", icon: Home },
-        { label: "Notifications", href: "/notifications", icon: Bell },
+        { label: "Feed", href: "/admin/feed", icon: Home },
+        { label: "Notifications", href: "/admin/notifications", icon: Bell },
       ]
     }
   ];
 
   return (
-    <div className="flex min-h-screen bg-[#0F172A]">
+    <div className="flex min-h-screen w-full overflow-x-hidden bg-white">
       {/* Sidebar Overlay (Mobile) */}
       {isSidebarOpen && (
         <div 
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
@@ -144,9 +145,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col transition-all lg:pl-72">
         {/* Top Header */}
-        <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-200 bg-white/80 px-4 backdrop-blur-md sm:px-6 lg:px-8">
+        <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-6 lg:px-8 shadow-sm">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setIsSidebarOpen(true)}
@@ -168,8 +169,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 overflow-auto bg-slate-50/50 p-4 lg:p-8">
-          <div className="mx-auto max-w-7xl">
+        <main className="flex-1 overflow-x-hidden bg-slate-50/50 p-4 lg:p-8">
+          <div className="mx-auto w-full max-w-7xl">
             {children}
           </div>
         </main>

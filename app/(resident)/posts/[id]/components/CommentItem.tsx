@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { 
-  Heart, 
+  ThumbsUp, 
   Reply, 
   Pencil, 
   Trash2, 
@@ -178,10 +178,10 @@ export default function CommentItem({
             <button 
               onClick={() => onLike(comment.id)}
               className={`flex items-center gap-1.5 text-[11px] font-bold transition-colors ${
-                isLiked ? "text-rose-600" : "text-slate-500 hover:text-rose-600"
+                isLiked ? "text-blue-600" : "text-slate-500 hover:text-blue-600"
               }`}
             >
-              <Heart size={14} fill={isLiked ? "currentColor" : "none"} />
+              <ThumbsUp size={14} fill={isLiked ? "currentColor" : "none"} />
               {comment.liked_by?.length > 0 && <span>{comment.liked_by.length}</span>}
               <span>{isLiked ? "Liked" : "Like"}</span>
             </button>

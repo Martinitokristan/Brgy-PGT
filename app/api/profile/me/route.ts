@@ -31,7 +31,10 @@ export async function GET() {
     );
   }
 
-  return NextResponse.json({ user, profile: data }, { status: 200 });
+  return NextResponse.json(
+    { ...(data ?? {}), email: data?.email ?? user.email },
+    { status: 200 }
+  );
 }
 
 // PATCH /api/profile/me - update allowed profile fields

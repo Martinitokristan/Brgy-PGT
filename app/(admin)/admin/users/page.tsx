@@ -2,223 +2,360 @@
 
 import useSWR from "swr";
 import { useState } from "react";
-import { 
-  Eye, 
-  Check, 
-  X, 
-  User as UserIcon,
-  Phone,
+import {  Phone,
   MapPin,
   Calendar,
+  CheckCircle2,
+  XCircle,
+  ChevronDown,
+  Mail,
   ShieldCheck,
-  Search,
+  ShieldX,
+  Camera,
+  Image as ImageIcon,
+  Users,
   ExternalLink
 } from "lucide-react";
+import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 
-type AdminUser = {
+type UserProfile = {
   id: string;
-  role: string;
+  name: string | null;
+  email: string | null;
+  role: string | null;
   is_approved: boolean;
-  barangay_id: number | null;
   phone: string | null;
   purok_address: string | null;
-  sex: string | null;
-  birth_date: string | null;
-  age: number | null;
   valid_id_path: string | null;
+  created_at: string;
+  barangays?: { name: string } | null;
 };
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+const AVATAR_COLORS = [
+  "bg-blue-500",
+  "bg-purple-500",
+  "bg-pink-500",
+  "bg-teal-500",
+  "bg-orange-500",
+  "bg-green-500",
+];
+
+function getAvatarColor(name: string) {
+  let hash = 0;
+  for (const c of name) hash = (hash + c.charCodeAt(0)) % AVATAR_COLORS.length;
+  return AVATAR_COLORS[hash];
+}
 
 export default function AdminUsersPage() {
-  const { data, error, isLoading, mutate } = useSWR<AdminUser[]>(
-    "/api/admin/users",
-    fetcher
+  const { data, isLoading, mutate } = useSWR<UserProfile[]>("/api/admin/users", fetcher);
+
+  const [filterRole, setFilterRole] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [updating, setUpdating] = useState<string | null>(null);
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
+  const [viewingIdUrl, setViewingIdUrl] = useState<string | null>(null);
+
+  const users = data ?? [];
+
+  const allBarangays = Array.from(
+    new Set(users.map((u) => u.barangays?.name).filter(Boolean))
   );
 
-  const [viewingId, setViewingId] = useState<string | null>(null);
+  const filtered = users.filter((u) => {
+    const matchRole = filterRole === "all" || u.role === filterRole;
+    const matchStatus =
+      filterStatus === "all" ||
+      (filterStatus === "active" && u.is_approved) ||
+      (filterStatus === "pending" && !u.is_approved);
+    return matchRole && matchStatus;
+  });
 
-  const getValidIdUrl = (path: string | null) => {
+  async function toggleApproval(user: UserProfile) {
+    setUpdating(user.id);
+    await fetch("/api/admin/users", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: user.id, is_approved: !user.is_approved }),
+    });
+    await mutate();
+    setUpdating(null);
+  }
+
+  async function toggleRole(user: UserProfile, newRole: string) {
+    setUpdating(user.id);
+    await fetch("/api/admin/users", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: user.id, role: newRole }),
+    });
+    await mutate();
+    setUpdating(null);
+  }
+
+  const getStorageUrl = (path: string | null) => {
     if (!path) return null;
     return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/valid-ids/${path}`;
   };
 
-  async function updateUser(id: string, updates: Partial<AdminUser>) {
-    await fetch("/api/admin/users", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, ...updates }),
-    });
-    void mutate();
-  }
-
   return (
-    <div className="flex flex-1 flex-col gap-6 py-4 sm:py-6">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-2">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Users & Approvals</h1>
-          <p className="text-sm font-medium text-slate-500">Approve new residents and manage barangay roles.</p>
-        </div>
-        <div className="flex gap-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Search residents..." 
-              className="h-10 rounded-xl border-0 bg-white pl-10 pr-4 text-xs font-medium ring-1 ring-slate-200 focus:ring-2 focus:ring-blue-600/10"
-            />
-          </div>
-        </div>
-      </header>
+    <div className="flex max-w-full flex-1 flex-col gap-4 overflow-x-hidden p-4 pb-8 sm:p-6">
+      {/* Header */}
+      <div className="flex items-center gap-2">
+        <Users className="h-5 w-5 text-slate-700" />
+        <h1 className="text-xl font-bold text-slate-900">Users Management</h1>
+      </div>
 
+      {/* Filters */}
+      <div className="flex flex-wrap gap-2">
+        <select
+          value={filterRole}
+          onChange={(e) => setFilterRole(e.target.value)}
+          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm focus:outline-none"
+        >
+          <option value="all">All Roles</option>
+          <option value="resident">Resident</option>
+          <option value="admin">Admin</option>
+        </select>
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm focus:outline-none"
+        >
+          <option value="all">All Statuses</option>
+          <option value="active">Active</option>
+          <option value="pending">Pending</option>
+        </select>
+        {allBarangays.length > 0 && (
+          <select className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm focus:outline-none">
+            <option value="all">All Barangays</option>
+            {allBarangays.map((b) => (
+              <option key={b} value={b!}>
+                {b}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      {/* Loading */}
       {isLoading && (
-        <div className="flex flex-col items-center justify-center py-20 bg-white rounded-[32px] ring-1 ring-slate-200">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-          <p className="mt-4 text-sm font-bold text-slate-600">Loading user database...</p>
+        <div className="flex flex-col gap-2">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-20 animate-pulse rounded-2xl bg-white" />
+          ))}
         </div>
       )}
 
-      {error && (
-        <div className="rounded-[32px] border border-red-200 bg-red-50 p-8 text-center ring-1 ring-red-100">
-          <ShieldCheck className="mx-auto h-12 w-12 text-red-500 opacity-20" />
-          <p className="mt-4 text-sm font-bold text-red-700">Failed to load users. Admin privileges required.</p>
+      {/* Empty */}
+      {!isLoading && filtered.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <p className="text-sm font-semibold text-slate-400">No users found.</p>
         </div>
       )}
 
-      {!isLoading && !error && (
-        <div className="overflow-hidden rounded-[32px] border-0 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] ring-1 ring-slate-200/60">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b bg-slate-50/50 text-[10px] uppercase font-bold tracking-widest text-slate-400">
-              <tr>
-                <th className="px-6 py-4">Resident</th>
-                <th className="px-6 py-4">Contact</th>
-                <th className="px-6 py-4">Verification ID</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {(data ?? []).map((u) => (
-                <tr key={u.id} className="group transition-colors hover:bg-slate-50/50">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600 font-bold group-hover:bg-blue-600 group-hover:text-white transition-all">
-                        {u.role === 'admin' ? <ShieldCheck className="h-5 w-5" /> : u.id.slice(0, 1).toUpperCase()}
-                      </div>
-                      <div>
-                        <code className="block text-[10px] font-bold text-slate-400 mb-0.5 uppercase">ID: {u.id.slice(0, 8)}</code>
-                        <span className="font-bold text-slate-900">{u.role === 'admin' ? 'System Administrator' : 'Resident'}</span>
+      {/* User Cards */}
+      <div className="flex flex-col gap-3">
+        {filtered.map((user) => {
+          const initial = (user.name || user.email || "?").charAt(0).toUpperCase();
+          const avatarBg = getAvatarColor(user.name || user.id);
+          const isExpanded = expandedUserId === user.id;
+          const isUpdating = updating === user.id;
+
+          return (
+            <motion.div
+              layout
+              key={user.id}
+              className={`relative overflow-hidden break-words rounded-[20px] bg-white shadow-sm transition-all ${
+                !user.is_approved ? "border-l-[6px] border-[#f59e0b]" : ""
+              }`}
+            >
+              <div 
+                className="flex cursor-pointer items-center gap-4 px-5 py-5"
+                onClick={() => setExpandedUserId(isExpanded ? null : user.id)}
+              >
+                {/* Avatar */}
+                <div
+                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-lg font-bold text-white shadow-inner ${avatarBg}`}
+                >
+                  {initial}
+                </div>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <h3 className="truncate text-[15px] font-bold text-slate-900">
+                    {user.name || "Anonymous"}
+                  </h3>
+                  <p className="truncate text-[13px] font-medium text-slate-400">
+                    {user.email}
+                  </p>
+                </div>
+
+                {/* Approved Indicator (Right Side) */}
+                {user.is_approved && (
+                  <div className="flex items-center gap-1 text-emerald-500">
+                    <CheckCircle2 size={18} />
+                    <span className="text-[11px] font-black uppercase tracking-widest hidden sm:inline">Approved</span>
+                  </div>
+                )}
+                
+                <ChevronDown 
+                   size={20} 
+                   className={`text-slate-300 transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`} 
+                />
+              </div>
+
+              <AnimatePresence>
+                {isExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className="overflow-hidden"
+                  >
+                    <div className="border-t border-slate-50 px-6 pb-8 pt-6">
+                      <div className="flex flex-col gap-5">
+                        {/* Status Icons & Details */}
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-3 text-slate-600">
+                            <Phone size={18} className="text-slate-400" />
+                            <span className="text-sm font-bold">{user.phone ? `+6${user.phone}` : "No phone verified"}</span>
+                          </div>
+
+                          <div className="flex items-center gap-3 text-slate-600">
+                            <MapPin size={18} className="text-slate-400" />
+                            <span className="text-sm font-bold">
+                              {user.barangays?.name || "Barangay Pagatpatan"} — {user.purok_address || "No address"}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-3 text-slate-600">
+                            <Calendar size={18} className="text-slate-400" />
+                            <span className="text-sm font-bold">
+                              Joined {new Date(user.created_at).toLocaleDateString()}
+                            </span>
+                          </div>
+
+                          {/* View Valid ID Button - Only for Pending/Verification */}
+                          {!user.is_approved && (
+                            <div className="flex items-center gap-3">
+                              <ImageIcon size={18} className="text-slate-400" />
+                              <button
+                                onClick={() => setViewingIdUrl(getStorageUrl(user.valid_id_path))}
+                                className="rounded-lg border border-blue-600 px-4 py-1.5 text-xs font-bold text-blue-600 transition-colors hover:bg-blue-50"
+                              >
+                                View Valid ID
+                              </button>
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-3">
+                            <label className="text-sm font-bold text-slate-600">Role:</label>
+                            <select 
+                              value={user.role || "resident"}
+                              onChange={(e) => toggleRole(user, e.target.value)}
+                              className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/10"
+                            >
+                              <option value="resident">Resident</option>
+                              <option value="admin">Admin</option>
+                              <option value="rider">Rider</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Approval Actions */}
+                        {!user.is_approved && (
+                          <div className="flex gap-3 pt-2">
+                            <button
+                              disabled={isUpdating}
+                              onClick={() => toggleApproval(user)}
+                              className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-black text-white shadow-lg shadow-blue-500/20 transition-all hover:bg-blue-700 active:scale-[0.98] disabled:opacity-50"
+                            >
+                              {isUpdating ? "..." : (
+                                <>
+                                  <CheckCircle2 size={18} />
+                                  Approve
+                                </>
+                              )}
+                            </button>
+                            <button
+                              className="flex items-center gap-2 rounded-xl bg-[#dc2626] px-6 py-2.5 text-sm font-black text-white shadow-lg shadow-red-500/20 transition-all hover:bg-red-700 active:scale-[0.98]"
+                            >
+                              <XCircle size={18} />
+                              Reject
+                            </button>
+                          </div>
+                        )}
+                        
+                        {user.is_approved && (
+                           <div className="flex gap-3 pt-2">
+                              <Link
+                                href={`/admin/users/${user.id}`}
+                                className="flex items-center gap-2 rounded-xl bg-slate-100 px-6 py-2.5 text-sm font-bold text-slate-900 transition-all hover:bg-slate-200"
+                              >
+                                <ExternalLink size={18} />
+                                View Profile
+                              </Link>
+                              <button
+                                disabled={isUpdating}
+                                onClick={() => toggleApproval(user)}
+                                className="rounded-xl bg-slate-100 px-6 py-2.5 text-sm font-bold text-slate-500 transition-all hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                              >
+                                {isUpdating ? "..." : "Revoke Access"}
+                              </button>
+                           </div>
+                        )}
                       </div>
                     </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
-                        <Phone className="h-3.5 w-3.5 text-blue-600" />
-                        {u.phone ?? "-"}
-                      </div>
-                      <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
-                        <MapPin className="h-3.5 w-3.5" />
-                        {u.purok_address ?? "-"}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    {u.valid_id_path ? (
-                      <button 
-                        onClick={() => setViewingId(getValidIdUrl(u.valid_id_path))}
-                        className="flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600 transition-all hover:bg-blue-600 hover:text-white"
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                        View Document
-                      </button>
-                    ) : (
-                      <span className="text-xs font-medium text-slate-400 italic">No document uploaded</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    {u.is_approved ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold text-emerald-600 ring-1 ring-emerald-100">
-                        <Check className="h-3 w-3" />
-                        Approved
-                      </span>
-                    ) : ( u.valid_id_path ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-[10px] font-bold text-amber-600 ring-1 ring-amber-100">
-                        Waiting Review
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-3 py-1 text-[10px] font-bold text-slate-400 ring-1 ring-slate-100">
-                        Incomplete
-                      </span>
-                    ))}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                      {!u.is_approved && u.valid_id_path && (
-                        <button
-                          onClick={() => void updateUser(u.id, { is_approved: true })}
-                          className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700 active:scale-95 transition-all"
-                        >
-                          Approve
-                        </button>
-                      )}
-                      <button
-                        onClick={() => void updateUser(u.id, { role: u.role === "admin" ? "resident" : "admin" })}
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all"
-                      >
-                        Toggle Role
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {(data ?? []).length === 0 && (
-            <div className="px-6 py-20 text-center">
-              <UserIcon className="mx-auto h-12 w-12 text-slate-200" />
-              <p className="mt-4 text-sm font-bold text-slate-400">No registered residents found.</p>
-            </div>
-          )}
-        </div>
-      )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          );
+        })}
+      </div>
 
       {/* ID Viewer Modal */}
-      {viewingId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
-          <div className="relative max-h-full w-full max-w-4xl overflow-hidden rounded-[32px] bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 bg-white px-8 py-4">
-              <h3 className="text-sm font-bold text-slate-900">Verification Document Preview</h3>
-              <button 
-                onClick={() => setViewingId(null)}
-                className="rounded-full bg-slate-100 p-2 text-slate-500 hover:bg-slate-200"
+      <AnimatePresence>
+        {viewingIdUrl && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setViewingIdUrl(null)}
+              className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-2xl overflow-hidden rounded-[32px] bg-white p-2 shadow-2xl"
+            >
+              <button
+                onClick={() => setViewingIdUrl(null)}
+                className="absolute right-4 top-4 z-10 rounded-full bg-black/50 p-2 text-white backdrop-blur-md hover:bg-black/70"
               >
-                <X className="h-5 w-5" />
+                <ChevronDown className="rotate-180" size={24} />
               </button>
-            </div>
-            <div className="overflow-auto p-4 bg-slate-50 text-center">
-              <img 
-                src={viewingId} 
-                className="mx-auto max-h-[70vh] rounded-2xl shadow-lg ring-1 ring-slate-200" 
-                alt="Valid ID" 
-                onError={() => {
-                  alert("Failed to load verification document. Please check storage bucket permissions.");
-                  setViewingId(null);
-                }}
-              />
-            </div>
-            <div className="flex justify-center border-t border-slate-100 bg-white p-6">
-              <button 
-                onClick={() => setViewingId(null)}
-                className="rounded-2xl bg-slate-900 px-8 py-3 text-sm font-bold text-white hover:bg-slate-800 transition-all"
-              >
-                Close Preview
-              </button>
-            </div>
+              <div className="aspect-[4/3] w-full overflow-hidden rounded-[26px] bg-slate-100">
+                <img 
+                  src={viewingIdUrl} 
+                  alt="Valid ID Document" 
+                  className="h-full w-full object-contain"
+                />
+              </div>
+              <div className="p-6 text-center">
+                <h3 className="text-lg font-bold text-slate-900">Valid ID Document</h3>
+                <p className="text-sm font-medium text-slate-500">Please verify the photo matches the user's information.</p>
+              </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 }
-

@@ -44,11 +44,11 @@ const fetcher = (url: string) => fetch(url).then((res) => {
   return res.json();
 });
 
-export default function FeedPage() {
+export default function AdminFeedPage() {
   const { data: me } = useSWR("/api/profile/me", fetcher);
   const { data, error, isLoading, mutate } = useSWR<Post[]>("/api/posts", fetcher);
   const [showingEmojiFor, setShowingEmojiFor] = useState<number | null>(null);
-  
+
   // Comment Drawer State
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
@@ -56,7 +56,7 @@ export default function FeedPage() {
   // Real-time counts for comments
   useEffect(() => {
     const channel = supabase
-      .channel("feed-comment-counts")
+      .channel("admin-feed-comment-counts")
       .on(
         "postgres_changes",
         {
@@ -195,13 +195,13 @@ export default function FeedPage() {
               onClick={() => setIsExpanding(true)}
               className="flex-1 rounded-full border border-slate-200 bg-slate-50 px-6 py-2.5 text-left text-sm font-medium text-slate-500 transition-all hover:bg-slate-100"
             >
-              What&apos;s on your mind, {me?.name?.split(" ")[0] || "Barangay"}?
+              What&apos;s on your mind, {me?.name?.split(" ")[0] || "Admin"}?
             </button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-2">
-              <h2 className="text-sm font-bold text-slate-900">Create New Post</h2>
+              <h2 className="text-sm font-bold text-slate-900">Create New Post (As Admin)</h2>
               <button 
                 type="button"
                 onClick={() => {
@@ -339,13 +339,13 @@ export default function FeedPage() {
               <div className="p-6 pb-4">
                 <div className="mb-4 flex items-start justify-between">
                   <div className="flex gap-4">
-                    <Link href={`/profile/${post.user_id}`} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-bold text-sm shadow-md transition-transform hover:scale-105">
+                    <Link href={`/admin/users/${post.user_id}`} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-bold text-sm shadow-md transition-transform hover:scale-105">
                       {(post.profiles?.name || "K").charAt(0)}
                     </Link>
                     <div>
                       <div className="flex flex-col leading-tight">
                         <Link 
-                          href={`/profile/${post.user_id}`}
+                           href={`/admin/users/${post.user_id}`}
                           className="text-[16px] font-bold text-[#385898] transition-colors hover:underline"
                         >
                           {post.profiles?.name || "Anonymous Resident"}

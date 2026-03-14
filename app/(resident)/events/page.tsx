@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { Plus, Filter, LayoutGrid, Calendar as CalendarIcon, Search } from "lucide-react";
-import EventCard from "./components/EventCard";
+import { Calendar, Clock, MapPin, Search } from "lucide-react";
 import EventDetailModal from "./components/EventDetailModal";
 
 type Event = {
@@ -17,101 +16,130 @@ type Event = {
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
+function formatDate(d: string) {
+  return new Date(d).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatTime(d: string) {
+  return new Date(d).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
 export default function EventsPage() {
   const { data: events, error, isLoading } = useSWR<Event[]>("/api/events", fetcher);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredEvents = (events ?? []).filter(e => 
-    e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    e.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    e.location?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredEvents = (events ?? []).filter(
+    (e) =>
+      e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      e.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      e.location?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
-    <div className="flex flex-1 flex-col gap-6 py-8 px-4 sm:px-6 lg:px-8 bg-slate-50/50 min-h-screen">
-      {/* Header Section */}
-      <header className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-        <div className="space-y-1">
-          <div className="flex items-center gap-3">
-             <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-xl shadow-blue-500/20">
-                <CalendarIcon size={24} />
-             </div>
-             <h1 className="text-3xl font-black tracking-tight text-slate-900">Barangay Events</h1>
-          </div>
-          <p className="text-sm font-medium text-slate-500 max-w-md">
-            Stay connected with the latest activities, workshops, and gatherings in our community.
-          </p>
+    <div>
+      {/* Page Header */}
+      <div className="bg-white px-4 py-4 border-b border-slate-100">
+        <div className="flex items-center gap-2">
+          <Calendar className="h-5 w-5 text-blue-600" />
+          <h1 className="text-lg font-bold text-slate-900">Barangay Events</h1>
+        </div>
+      </div>
+
+      <div className="px-4 py-4 space-y-3">
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search events..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          />
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative flex-1 min-w-[240px]">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input 
-              type="text"
-              placeholder="Search events..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-2xl border-0 bg-white px-11 py-3.5 text-sm font-medium text-slate-900 shadow-sm ring-1 ring-slate-200 transition-all focus:ring-2 focus:ring-blue-600/20"
-            />
-          </div>
-          <button className="flex items-center gap-2 rounded-2xl bg-white px-5 py-3.5 text-sm font-bold text-slate-700 shadow-sm ring-1 ring-slate-200 transition-all hover:bg-slate-50">
-            <Filter size={18} /> Filter
-          </button>
-        </div>
-      </header>
-
-      {/* Events Grid */}
-      <section className="relative mt-4">
+        {/* Loading */}
         {isLoading && (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="flex flex-col gap-3">
             {[0, 1, 2].map((i) => (
-              <div key={i} className="h-[420px] animate-pulse rounded-2xl bg-white ring-1 ring-slate-100" />
+              <div key={i} className="h-44 animate-pulse rounded-2xl bg-white" />
             ))}
           </div>
         )}
 
+        {/* Error */}
         {error && (
-          <div className="flex flex-col items-center justify-center rounded-[32px] border-2 border-dashed border-red-100 bg-red-50/30 p-12 text-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-red-100 text-red-600">
-              <Plus className="h-8 w-8 rotate-45" />
-            </div>
-            <h3 className="text-lg font-bold text-slate-900">Failed to load events</h3>
-            <p className="mt-2 text-sm font-medium text-slate-500">
-               Please try again later or contact support if the problem persists.
-            </p>
+          <div className="rounded-2xl bg-red-50 px-4 py-8 text-center">
+            <p className="text-sm font-semibold text-red-600">Failed to load events.</p>
           </div>
         )}
 
+        {/* Empty */}
         {!isLoading && !error && filteredEvents.length === 0 && (
-          <div className="flex flex-col items-center justify-center rounded-[32px] border-2 border-dashed border-slate-200 bg-white p-16 text-center shadow-sm">
-            <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-[28px] bg-slate-50 text-slate-300">
-              <Search size={32} />
-            </div>
-            <h3 className="text-xl font-bold text-slate-900">No events found</h3>
-            <p className="mt-2 text-sm font-medium text-slate-500 max-w-xs mx-auto leading-relaxed">
-              We couldn&apos;t find any events matching your current search. Try different keywords or check back later!
-            </p>
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <Calendar className="mb-3 h-12 w-12 text-slate-200" />
+            <p className="text-sm font-semibold text-slate-400">No events found.</p>
           </div>
         )}
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredEvents.map((event) => (
-            <EventCard 
-              key={event.id}
-              event={event}
-              onClick={() => setSelectedEvent(event)}
-            />
-          ))}
-        </div>
-      </section>
+        {/* Event Cards */}
+        {filteredEvents.map((event) => (
+          <div
+            key={event.id}
+            className="rounded-2xl border border-slate-100 bg-white px-5 py-5 shadow-sm"
+          >
+            <h3 className="text-base font-bold text-slate-900">{event.title}</h3>
+            {event.description && (
+              <p className="mt-0.5 text-sm text-slate-500 line-clamp-2">{event.description}</p>
+            )}
+
+            <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-500">
+              <div className="flex items-center gap-1.5">
+                <Calendar className="h-4 w-4 text-blue-500" />
+                <span>{formatDate(event.event_date)}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Clock className="h-4 w-4 text-orange-400" />
+                <span>{formatTime(event.event_date)}</span>
+              </div>
+            </div>
+
+            {event.location && (
+              <div className="mt-2 flex items-center gap-1.5">
+                <MapPin className="h-4 w-4 text-red-500" />
+                <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
+                  {event.location}
+                </span>
+              </div>
+            )}
+
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={() => setSelectedEvent(event)}
+                className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                View Details
+              </button>
+              <button className="ml-auto rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-blue-700 transition-colors active:scale-95">
+                I&apos;m Interested
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
 
       {/* Detail Modal */}
       {selectedEvent && (
-        <EventDetailModal
-          event={selectedEvent}
-          onClose={() => setSelectedEvent(null)}
-        />
+        <EventDetailModal event={selectedEvent} onClose={() => setSelectedEvent(null)} />
       )}
     </div>
   );

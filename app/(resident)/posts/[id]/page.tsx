@@ -7,7 +7,7 @@ import {
   ArrowLeft, 
   MessageCircle, 
   Share2, 
-  Heart, 
+  ThumbsUp, 
   Smile, 
   Send, 
   Loader2,
