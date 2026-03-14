@@ -16,21 +16,23 @@ export async function POST(request: Request) {
     );
   }
 
-  const { data: userRow, error: userError } = await service
-    .from("auth.users")
-    .select("id, email")
+  // Look up user via profiles table (has email column)
+  const { data: profileRow, error: profileError } = await service
+    .from("profiles")
+    .select("id")
     .eq("email", email)
     .maybeSingle();
 
-  if (userError || !userRow) {
+  if (profileError || !profileRow) {
     return NextResponse.json(
       { error: "Invalid email or code." },
       { status: 400 }
     );
   }
 
-  const userId = userRow.id as string;
+  const userId = profileRow.id as string;
 
+  // Find the most-recent OTP for this user+device
   const { data: otpRow, error: otpError } = await service
     .from("device_otps")
     .select("id, code, expires_at")
@@ -40,7 +42,7 @@ export async function POST(request: Request) {
     .limit(1)
     .maybeSingle();
 
-  if (otpError || !otpRow || otpRow.code !== code) {
+  if (otpError || !otpRow) {
     return NextResponse.json(
       { error: "Invalid or expired code." },
       { status: 400 }
@@ -49,32 +51,33 @@ export async function POST(request: Request) {
 
   if (new Date(otpRow.expires_at) < new Date()) {
     return NextResponse.json(
-      { error: "This code has expired. Please log in again." },
+      { error: "This code has expired. Please log in again to get a new code." },
       { status: 400 }
     );
   }
 
-  // Insert trusted device.
+  if (otpRow.code !== code) {
+    return NextResponse.json(
+      { error: "Incorrect code. Please try again." },
+      { status: 400 }
+    );
+  }
+
+  // Trust this device
   await service.from("trusted_devices").upsert(
     {
       user_id: userId,
       device_token: deviceToken,
       last_used_at: new Date().toISOString(),
     },
-    {
-      onConflict: "user_id,device_token",
-    } as any
+    { onConflict: "user_id,device_token" } as any
   );
 
-  // Clean up OTP.
-  await service
-    .from("device_otps")
-    .delete()
-    .eq("id", otpRow.id);
+  // Delete the used OTP
+  await service.from("device_otps").delete().eq("id", otpRow.id);
 
   return NextResponse.json(
     { ok: true, message: "Device verified and trusted." },
     { status: 200 }
   );
 }
-

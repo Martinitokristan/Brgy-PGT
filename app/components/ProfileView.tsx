@@ -20,8 +20,11 @@ import {
   X,
   MoreHorizontal,
   Camera,
-  Heart,
-  Share2,
+  UserMinus,
+  BellRing,
+  BellOff,
+  ChevronDown,
+  Image as ImageIcon,
 } from "lucide-react";
 import CommentDrawer from "@/app/components/ui/CommentDrawer";
 
@@ -68,11 +71,41 @@ const fetcher = (url: string) => fetch(url).then((res) => {
   return res.json();
 });
 
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+
+function getAvatarUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  if (path.startsWith("http")) return path;
+  return `${SUPABASE_URL}/storage/v1/object/public/avatars/${path}`;
+}
+
+function getCoverUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  if (path.startsWith("http")) return path;
+  return `${SUPABASE_URL}/storage/v1/object/public/profile-covers/${path}`;
+}
+
 const ShareIcon = ({ className = "h-5 w-5" }: { className?: string }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
      <path d="M14 9V5L22 12L14 19V14.9C8.5 14.9 4.7 16.6 2 20.4C3.1 14.9 6.4 9.5 14 9Z" />
   </svg>
 );
+
+function formatPhoneForDisplay(raw: string | null | undefined) {
+  if (!raw) return null;
+  const digits = raw.replace(/\D/g, "");
+
+  if (digits.startsWith("63") && digits.length === 12) {
+    return `+${digits}`;
+  }
+  if (digits.startsWith("0") && digits.length === 11) {
+    return `+63${digits.slice(1)}`;
+  }
+  if (digits.startsWith("9") && digits.length === 10) {
+    return `+63${digits}`;
+  }
+  return raw;
+}
 
 export default function ProfileView({ userId }: { userId: string }) {
   const { data: profile, mutate, isLoading: profileLoading } = useSWR<ProfileData>(userId ? `/api/profile/${userId}` : null, fetcher);
@@ -127,6 +160,7 @@ export default function ProfileView({ userId }: { userId: string }) {
   const [isSendingSms, setIsSendingSms] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [showFollowMenu, setShowFollowMenu] = useState(false);
   
   const [menuOpenPostId, setMenuOpenPostId] = useState<number | null>(null);
   const [isSuspending, setIsSuspending] = useState(false);
@@ -136,14 +170,28 @@ export default function ProfileView({ userId }: { userId: string }) {
   const [adminResponse, setAdminResponse] = useState("");
   const [newStatus, setNewStatus] = useState("pending");
   const [uploadingPhoto, setUploadingPhoto] = useState<"avatar" | "cover" | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
-  async function handlePhotoUpload(file: File, type: "avatar" | "cover_photo") {
-    setUploadingPhoto(type === "avatar" ? "avatar" : "cover");
+  function handlePhotoUpload(file: File, type: "avatar" | "cover_photo") {
+    const which = type === "avatar" ? "avatar" : "cover";
+    setUploadingPhoto(which);
+    setUploadProgress(0);
+
     const fd = new FormData();
     fd.append(type, file);
-    await fetch("/api/profile/me", { method: "PATCH", body: fd });
-    await mutate();
-    setUploadingPhoto(null);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("PATCH", "/api/profile/me");
+    xhr.upload.onprogress = (ev) => {
+      if (ev.lengthComputable) setUploadProgress(Math.round((ev.loaded / ev.total) * 100));
+    };
+    xhr.onload = () => {
+      setUploadProgress(100);
+      void mutate();
+      setTimeout(() => { setUploadingPhoto(null); setUploadProgress(0); }, 600);
+    };
+    xhr.onerror = () => { setUploadingPhoto(null); setUploadProgress(0); };
+    xhr.send(fd);
   }
 
   if (profileLoading) return (
@@ -268,40 +316,52 @@ export default function ProfileView({ userId }: { userId: string }) {
   };
 
   return (
-    <div className="flex flex-1 flex-col bg-white min-h-screen overflow-x-hidden">
-      <div className="relative h-48 w-full bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 sm:h-56">
-        {user.cover_photo && (
-          <img src={user.cover_photo} alt="" className="h-full w-full object-cover" />
-        )}
-        {isOwn && (
-          <label className="absolute bottom-3 right-3 flex cursor-pointer items-center gap-1.5 rounded-xl bg-white/90 px-3 py-2 text-xs font-bold text-slate-700 shadow backdrop-blur-sm hover:bg-white transition-colors">
-            {uploadingPhoto === "cover" ? (
-              <span>Uploading…</span>
-            ) : (
-              <>
-                <Camera className="h-3.5 w-3.5" />
-                Change Cover
-              </>
-            )}
-            <input
-              type="file"
-              className="hidden"
-              accept="image/*"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) handlePhotoUpload(f, "cover_photo");
-              }}
-            />
-          </label>
+    <div className="relative flex flex-1 flex-col bg-white min-h-screen overflow-x-hidden">
+      {/* Cover area — extends ~half over the profile avatar */}
+      <div className="relative h-60 w-full overflow-hidden bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 sm:h-72">
+        {getCoverUrl(user.cover_photo) && (
+          <img src={getCoverUrl(user.cover_photo)!} alt="" className="h-full w-full object-cover" />
         )}
       </div>
 
-      <div className="relative -mt-20 w-full bg-white pb-12 pt-0 sm:-mt-24">
+      {/* Change Cover button — top-right of cover (below transparent header buttons) */}
+      {isOwn && (
+        <label className="absolute right-4 top-16 z-30 flex cursor-pointer items-center gap-1.5 rounded-xl bg-white/90 px-3 py-2 text-xs font-bold text-slate-700 shadow-lg backdrop-blur-sm hover:bg-white transition-colors">
+          {uploadingPhoto === "cover" ? (
+            <span className="flex items-center gap-1.5">
+              <span className="h-3 w-3 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+              {uploadProgress}%
+            </span>
+          ) : user.cover_photo ? (
+            <>
+              <Camera className="h-3.5 w-3.5" />
+              Change Cover
+            </>
+          ) : (
+            <>
+              <ImageIcon className="h-3.5 w-3.5" />
+              Add Cover Photo
+            </>
+          )}
+          <input
+            type="file"
+            className="hidden"
+            accept="image/*"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handlePhotoUpload(f, "cover_photo");
+            }}
+          />
+        </label>
+      )}
+
+      {/* Profile content overlaps ~half into the cover (avatar is centered at the cover/content boundary) */}
+      <div className="relative -mt-24 w-full bg-white pb-12 pt-0 sm:-mt-28">
         <div className="mx-auto w-full max-w-2xl px-4">
           <div className="relative mx-auto mb-4 flex h-36 w-36 items-center justify-center sm:h-40 sm:w-40">
              <div className="relative h-full w-full overflow-hidden rounded-full border-[5px] border-white bg-slate-100 shadow-lg">
-               {user.avatar ? (
-                 <img src={user.avatar} alt={user.name} className="h-full w-full object-cover" />
+               {getAvatarUrl(user.avatar) ? (
+                 <img src={getAvatarUrl(user.avatar)!} alt={user.name} className="h-full w-full object-cover" />
                ) : (
                  <div className="flex h-full w-full items-center justify-center bg-slate-100 text-5xl font-black text-slate-300">
                    {user.name.charAt(0)}
@@ -309,9 +369,12 @@ export default function ProfileView({ userId }: { userId: string }) {
                )}
              </div>
              {isOwn && (
-               <label className="absolute bottom-1 right-1 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-white shadow-lg hover:bg-slate-50 transition-colors">
+               <label className="absolute bottom-1 right-1 flex h-9 w-9 cursor-pointer flex-col items-center justify-center rounded-full bg-white shadow-lg hover:bg-slate-50 transition-colors overflow-hidden">
                  {uploadingPhoto === "avatar" ? (
-                   <span className="text-[9px] text-slate-400">...</span>
+                   <>
+                     <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                     <span className="text-[7px] font-bold text-blue-600 mt-0.5">{uploadProgress}%</span>
+                   </>
                  ) : (
                    <Camera className="h-4 w-4 text-slate-600" />
                  )}
@@ -328,65 +391,99 @@ export default function ProfileView({ userId }: { userId: string }) {
              )}
           </div>
 
-          <div className="flex flex-col items-center space-y-4 text-center">
-            <h1 className="text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
+          <div className="flex flex-col items-center space-y-2 text-center">
+            <h1 className="text-[22px] font-bold tracking-tight text-slate-900">
               {user.name}
             </h1>
-            <div className="flex items-center justify-center">
-              <span className="rounded-full bg-slate-50 px-4 py-1.5 text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">
-                {user.role}
-              </span>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-black uppercase tracking-[0.15em] text-slate-500">
+              {user.role}
+            </span>
+
+            <div className="flex items-center justify-center gap-1 py-1 text-[13px] font-semibold text-slate-500">
+              <span><span className="font-bold text-slate-900">{stats.followers_count}</span> followers</span>
+              <span className="text-slate-300 px-0.5">•</span>
+              <span><span className="font-bold text-slate-900">{stats.following_count}</span> following</span>
+              <span className="text-slate-300 px-0.5">•</span>
+              <span><span className="font-bold text-slate-900">{stats.posts_count}</span> posts</span>
             </div>
 
-            <div className="flex items-center justify-center gap-1.5 py-2 text-[13px] font-bold text-slate-500">
-              <span><span className="text-slate-900">{stats.followers_count}</span> followers</span>
-              <span className="px-1 text-slate-300">•</span>
-              <span><span className="text-slate-900">{stats.following_count}</span> following</span>
-              <span className="px-1 text-slate-300">•</span>
-              <span><span className="text-slate-900">{stats.posts_count}</span> posts</span>
-            </div>
-
-            <div className="flex flex-col items-center gap-2 pt-2 text-[13px] font-medium text-slate-600">
-              <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
-                <div className="flex items-center gap-1.5">
-                  <MapPin className="h-4 w-4 text-slate-400" />
-                  <span>{user.barangays?.name || "Barangay Pagatpatan"}</span>
-                </div>
-                {user.email && (
-                  <div className="flex items-center gap-1.5">
-                    <Mail className="h-4 w-4 text-slate-400" />
-                    <span>{user.email}</span>
-                  </div>
-                )}
+            <div className="flex flex-col items-center gap-1.5 pt-2 text-[13px] font-medium text-slate-600">
+              <div className="flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5 text-slate-400" />
+                <span>{user.barangays?.name || "Barangay Pagatpatan"}</span>
               </div>
+              {user.email && (
+                <div className="flex items-center gap-1.5">
+                  <Mail className="h-3.5 w-3.5 text-slate-400" />
+                  <span className="text-[12px]">{user.email}</span>
+                </div>
+              )}
               {user.phone && (
-                <div className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-slate-400" />
-                  <span className="text-slate-500 font-bold">+63{user.phone}</span>
+                <div className="flex items-center gap-1.5">
+                  <Phone className="h-3.5 w-3.5 text-slate-400" />
+                  <span className="text-[13px] font-semibold text-slate-600">{formatPhoneForDisplay(user.phone)}</span>
                 </div>
               )}
             </div>
 
-            <div className="flex items-center justify-center gap-2 pt-8">
+            <div className="flex items-center justify-center gap-2 pt-6">
               {me && !isOwn && (
-                <button 
-                  onClick={handleFollow}
-                  className={`flex items-center gap-2 rounded-lg px-6 py-2.5 text-[13px] font-black transition-all active:scale-95 ${
-                    is_following 
-                      ? "bg-slate-100 text-slate-700" 
-                      : "bg-[#0095f6] text-white hover:bg-[#1877f2]"
-                  }`}
-                >
-                  {is_following ? <UserCheck size={20} /> : <UserPlus size={20} />}
-                  <span>{is_following ? "Following" : "Follow"}</span>
-                </button>
+                <div className="relative">
+                  {!is_following ? (
+                    <button
+                      onClick={handleFollow}
+                      className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-[13px] font-bold text-white shadow-md transition-all hover:bg-blue-700 active:scale-95"
+                    >
+                      <UserPlus size={16} />
+                      <span>Follow</span>
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setShowFollowMenu((v) => !v)}
+                        className="flex items-center gap-2 rounded-xl bg-slate-100 px-5 py-2.5 text-[13px] font-bold text-slate-700 transition-all hover:bg-slate-200 active:scale-95"
+                      >
+                        <UserCheck size={16} className="text-blue-600" />
+                        <span>Following</span>
+                        <ChevronDown size={14} className={`transition-transform ${showFollowMenu ? "rotate-180" : ""}`} />
+                      </button>
+                    </div>
+                  )}
+
+                  {showFollowMenu && is_following && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setShowFollowMenu(false)} />
+                      <div className="absolute left-0 top-full z-20 mt-2 w-52 overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-200 animate-in fade-in slide-in-from-top-1 duration-150">
+                        <button
+                          onClick={() => { handleFollow(); setShowFollowMenu(false); }}
+                          className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"
+                        >
+                          <UserMinus size={16} /> Unfollow
+                        </button>
+                        <button
+                          onClick={() => setShowFollowMenu(false)}
+                          className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                        >
+                          <BellOff size={16} /> Snooze (30 days)
+                        </button>
+                        <button
+                          onClick={() => setShowFollowMenu(false)}
+                          className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold text-blue-600 hover:bg-blue-50 transition-colors"
+                        >
+                          <BellRing size={16} /> Bell Priority
+                          <span className="ml-auto text-[10px] font-bold uppercase text-blue-400 bg-blue-50 px-2 py-0.5 rounded-full">Notify First</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               )}
 
               {me && isAdminView && !isOwn && (
                 <button 
                   onClick={handleSendSms}
                   disabled={isSendingSms}
-                  className="flex items-center gap-2 rounded-lg bg-[#007AB8] px-6 py-2.5 text-[13px] font-black text-white transition-all hover:bg-[#006699] active:scale-95 disabled:opacity-50"
+                  className="flex items-center gap-2 rounded-xl bg-[#007AB8] px-5 py-2.5 text-[13px] font-bold text-white transition-all hover:bg-[#006699] active:scale-95 disabled:opacity-50"
                 >
                   <Send className="h-4 w-4" />
                   <span>{isSendingSms ? "Sending..." : "Send SMS"}</span>
@@ -395,16 +492,16 @@ export default function ProfileView({ userId }: { userId: string }) {
 
               <button 
                 onClick={handleShare}
-                className="flex h-11 w-11 items-center justify-center text-slate-900 transition-all hover:scale-110 active:scale-90"
+                className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 transition-all hover:bg-slate-100 active:scale-90"
               >
-                <ShareIcon className="h-7 w-7" />
+                <ShareIcon className="h-6 w-6" />
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-5xl px-2 sm:px-4 py-8">
+      <div className="mx-auto w-full max-w-5xl px-0 sm:px-4 py-8">
           <div className="flex items-center justify-around border-b border-slate-100 bg-white">
             <button 
               onClick={() => setActiveTab("posts")}
@@ -436,7 +533,7 @@ export default function ProfileView({ userId }: { userId: string }) {
                 {posts.map((post) => (
                   <div 
                     key={post.id} 
-                    className="group relative flex cursor-pointer flex-col rounded-[20px] bg-white p-5 shadow-sm border border-slate-100 transition-all hover:bg-slate-50/50"
+                    className="group relative flex cursor-pointer flex-col rounded-none border-x-0 border-y border-slate-100 bg-white p-4 shadow-sm transition-all hover:bg-slate-50/50 sm:rounded-[20px] sm:border sm:p-5"
                     onClick={() => openComments(post.id)}
                   >
                     <div className="mb-4 flex items-center justify-between">
@@ -552,22 +649,22 @@ export default function ProfileView({ userId }: { userId: string }) {
                       </div>
 
                       {/* Buttons Row */}
-                      <div className="flex items-center justify-around pt-1">
+                      <div className="grid grid-cols-3 gap-1 pt-1 sm:gap-2">
                         <button 
-                          onClick={() => handleReact(post.id, "heart")}
-                          className={`flex flex-1 items-center justify-center gap-2 py-2 text-[14px] font-bold transition-all hover:bg-slate-50 rounded-lg ${
-                            post.my_reaction === "heart" ? "text-red-500" : "text-[#65676B]"
+                          onClick={() => handleReact(post.id, "like")}
+                          className={`flex min-w-0 items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-bold transition-all hover:bg-slate-50 sm:gap-2 sm:text-[14px] ${
+                            post.my_reaction === "like" ? "text-blue-600" : "text-[#65676B]"
                           }`}
                         >
-                          <Heart size={20} fill={post.my_reaction === "heart" ? "currentColor" : "none"} />
-                          <span>Heart</span>
+                          <ThumbsUp size={18} className={`shrink-0 ${post.my_reaction === "like" ? "fill-current" : ""}`} />
+                          <span className="truncate">Like</span>
                         </button>
                         <button 
                           onClick={() => openComments(post.id)}
-                          className="flex flex-1 items-center justify-center gap-2 py-2 text-[14px] font-bold text-[#65676B] hover:bg-slate-50 rounded-lg transition-all"
+                          className="flex min-w-0 items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-bold text-[#65676B] transition-all hover:bg-slate-50 sm:gap-2 sm:text-[14px]"
                         >
-                          <MessageCircle size={20} /> 
-                          <span>Comment</span>
+                          <MessageCircle size={18} className="shrink-0" /> 
+                          <span className="truncate">Comment</span>
                         </button>
                         <button 
                           onClick={() => {
@@ -579,10 +676,10 @@ export default function ProfileView({ userId }: { userId: string }) {
                               alert("Link copied!");
                             }
                           }}
-                          className="flex flex-1 items-center justify-center gap-2 py-2 text-[14px] font-bold text-[#65676B] hover:bg-slate-50 rounded-lg transition-all"
+                          className="flex min-w-0 items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-bold text-[#65676B] transition-all hover:bg-slate-50 sm:gap-2 sm:text-[14px]"
                         >
-                          <Share2 size={20} /> 
-                          <span>Share</span>
+                          <ShareIcon className="h-[18px] w-[18px] shrink-0" /> 
+                          <span className="truncate">Share</span>
                         </button>
                       </div>
                     </div>

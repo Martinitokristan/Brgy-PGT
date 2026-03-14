@@ -5,7 +5,6 @@ import { useState, useRef } from "react";
 import { 
   ThumbsUp, 
   MessageCircle, 
-  Share2, 
   MoreHorizontal, 
   Search,
   User as UserIcon,
@@ -16,7 +15,6 @@ import {
   Send,
   Loader2,
   ExternalLink,
-  Heart
 } from "lucide-react";
 import Link from "next/link";
 import CommentDrawer from "@/app/components/ui/CommentDrawer";
@@ -43,6 +41,12 @@ const fetcher = (url: string) => fetch(url).then((res) => {
   if (!res.ok) throw new Error("Failed to fetch");
   return res.json();
 });
+
+const ShareIcon = ({ className = "h-5 w-5" }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M14 9V5L22 12L14 19V14.9C8.5 14.9 4.7 16.6 2 20.4C3.1 14.9 6.4 9.5 14 9Z" />
+  </svg>
+);
 
 export default function AdminFeedPage() {
   const { data: me } = useSWR("/api/profile/me", fetcher);
@@ -183,7 +187,7 @@ export default function AdminFeedPage() {
 
   return (
     <>
-    <div className="mx-auto w-full max-w-5xl space-y-6 px-2 sm:px-4">
+    <div className="mx-auto w-full max-w-5xl space-y-6 px-0 sm:px-4">
       {/* What's on your mind? Card */}
       <div className={`overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 transition-all ${isExpanding ? "p-6" : "p-4"}`}>
         {!isExpanding ? (
@@ -334,9 +338,9 @@ export default function AdminFeedPage() {
           {(data ?? []).map((post) => (
             <article
               key={post.id}
-              className="group overflow-hidden rounded-[20px] bg-white shadow-sm border border-slate-100 transition-all hover:bg-slate-50/50"
+              className="group overflow-hidden rounded-none border-x-0 border-y border-slate-100 bg-white shadow-sm transition-all hover:bg-slate-50/50 sm:rounded-[20px] sm:border"
             >
-              <div className="p-6 pb-4">
+              <div className="p-4 pb-4 sm:p-6 sm:pb-4">
                 <div className="mb-4 flex items-start justify-between">
                   <div className="flex gap-4">
                     <Link href={`/admin/users/${post.user_id}`} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-bold text-sm shadow-md transition-transform hover:scale-105">
@@ -392,7 +396,7 @@ export default function AdminFeedPage() {
                 )}
               </div>
 
-              <div className="flex flex-col border-t border-slate-100 px-6 py-2">
+              <div className="flex flex-col border-t border-slate-100 px-4 py-2 sm:px-6">
                 {/* Count Row */}
                 <div className="flex justify-end border-b border-slate-50 pb-2 px-1">
                   {post.comment_count > 0 && (
@@ -406,33 +410,29 @@ export default function AdminFeedPage() {
                 </div>
 
                 {/* Buttons Row */}
-                <div className="flex items-center justify-around pt-1">
-                  <div className="relative flex flex-1 justify-center">
-                    <button 
-                      onClick={() => handleReact(post.id, "heart")}
-                      className={`flex w-full items-center justify-center gap-2 py-2 text-[14px] font-bold transition-all hover:bg-slate-50 rounded-lg ${
-                        post.my_reaction === "heart" ? "text-red-500" : "text-[#65676B]"
-                      }`}
-                    >
-                      <Heart size={20} fill={post.my_reaction === "heart" ? "currentColor" : "none"} />
-                      <span>Heart</span>
-                    </button>
-                  </div>
-                  
+                <div className="grid grid-cols-3 gap-1 pt-1 sm:gap-2">
+                  <button 
+                    onClick={() => handleReact(post.id, "like")}
+                    className={`flex min-w-0 items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-bold transition-all hover:bg-slate-50 sm:gap-2 sm:text-[14px] ${
+                      post.my_reaction === "like" ? "text-blue-600" : "text-[#65676B]"
+                    }`}
+                  >
+                    <ThumbsUp size={18} className={`shrink-0 ${post.my_reaction === "like" ? "fill-current" : ""}`} />
+                    <span className="truncate">Like</span>
+                  </button>
                   <button 
                     onClick={() => openComments(post.id)}
-                    className="flex flex-1 items-center justify-center gap-2 py-2 text-[14px] font-bold text-[#65676B] hover:bg-slate-50 rounded-lg transition-all"
+                    className="flex min-w-0 items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-bold text-[#65676B] transition-all hover:bg-slate-50 sm:gap-2 sm:text-[14px]"
                   >
-                    <MessageCircle size={20} />
-                    <span>Comment</span>
+                    <MessageCircle size={18} className="shrink-0" /> 
+                    <span className="truncate">Comment</span>
                   </button>
-                  
                   <button 
                     onClick={() => handleShare(post.id)}
-                    className="flex flex-1 items-center justify-center gap-2 py-2 text-[14px] font-bold text-[#65676B] hover:bg-slate-50 rounded-lg transition-all"
+                    className="flex min-w-0 items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-bold text-[#65676B] transition-all hover:bg-slate-50 sm:gap-2 sm:text-[14px]"
                   >
-                    <Share2 size={20} />
-                    <span>Share</span>
+                    <ShareIcon className="h-[18px] w-[18px] shrink-0" /> 
+                    <span className="truncate">Share</span>
                   </button>
                 </div>
               </div>

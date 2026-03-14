@@ -28,6 +28,7 @@ type UserProfile = {
   phone: string | null;
   purok_address: string | null;
   valid_id_path: string | null;
+  avatar: string | null;
   created_at: string;
   barangays?: { name: string } | null;
 };
@@ -47,6 +48,16 @@ function getAvatarColor(name: string) {
   let hash = 0;
   for (const c of name) hash = (hash + c.charCodeAt(0)) % AVATAR_COLORS.length;
   return AVATAR_COLORS[hash];
+}
+
+function formatPhoneForDisplay(raw: string | null | undefined) {
+  if (!raw) return "No phone verified";
+  const digits = raw.replace(/\D/g, "");
+
+  if (digits.startsWith("63") && digits.length === 12) return `+${digits}`;
+  if (digits.startsWith("0") && digits.length === 11) return `+63${digits.slice(1)}`;
+  if (digits.startsWith("9") && digits.length === 10) return `+63${digits}`;
+  return raw;
 }
 
 export default function AdminUsersPage() {
@@ -98,6 +109,12 @@ export default function AdminUsersPage() {
   const getStorageUrl = (path: string | null) => {
     if (!path) return null;
     return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/valid-ids/${path}`;
+  };
+
+  const getAvatarUrl = (avatar: string | null) => {
+    if (!avatar) return null;
+    if (avatar.startsWith("http")) return avatar;
+    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${avatar}`;
   };
 
   return (
@@ -177,10 +194,18 @@ export default function AdminUsersPage() {
                 onClick={() => setExpandedUserId(isExpanded ? null : user.id)}
               >
                 {/* Avatar */}
-                <div
-                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-lg font-bold text-white shadow-inner ${avatarBg}`}
-                >
-                  {initial}
+                <div className={`relative h-12 w-12 shrink-0 overflow-hidden rounded-full shadow-sm ${!getAvatarUrl(user.avatar) ? avatarBg : ""}`}>
+                  {getAvatarUrl(user.avatar) ? (
+                    <img
+                      src={getAvatarUrl(user.avatar)!}
+                      alt={user.name || "User"}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className={`flex h-full w-full items-center justify-center text-lg font-bold text-white ${avatarBg}`}>
+                      {initial}
+                    </div>
+                  )}
                 </div>
 
                 {/* Info */}
@@ -222,7 +247,7 @@ export default function AdminUsersPage() {
                         <div className="space-y-4">
                           <div className="flex items-center gap-3 text-slate-600">
                             <Phone size={18} className="text-slate-400" />
-                            <span className="text-sm font-bold">{user.phone ? `+6${user.phone}` : "No phone verified"}</span>
+                            <span className="text-sm font-bold">{formatPhoneForDisplay(user.phone)}</span>
                           </div>
 
                           <div className="flex items-center gap-3 text-slate-600">

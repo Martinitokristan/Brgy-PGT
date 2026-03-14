@@ -22,12 +22,17 @@ import { usePathname, useRouter } from "next/navigation";
 import useSWR from "swr";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const countFetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const { data: me } = useSWR("/api/profile/me", fetcher);
+  const { data: notifData } = useSWR("/api/notifications/unread-count", countFetcher, {
+    refreshInterval: 15000, // poll every 15 seconds for real-time feel
+  });
+  const unreadCount: number = notifData?.count ?? 0;
 
   useEffect(() => {
     async function checkRole() {
@@ -79,9 +84,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       <aside className={`fixed inset-y-0 left-0 z-50 w-72 transform bg-[#0B1120] ring-1 ring-white/5 transition-transform duration-300 ease-in-out lg:translate-x-0 ${isSidebarOpen ? "translate-x-0 shadow-2xl shadow-black" : "-translate-x-full lg:-translate-x-full"}`}>
         <div className="flex h-full flex-col">
           {/* Header */}
-          <div className="flex items-center justify-start px-8 py-10">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 shadow-lg shadow-blue-500/20 ring-1 ring-white/10">
+          <div className="flex items-center gap-3 px-6 py-8">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 shadow-lg shadow-blue-500/20 ring-1 ring-white/10">
               <ShieldCheck className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <p className="text-[15px] font-extrabold text-white leading-tight">Barangay PGT</p>
+              <p className="text-[11px] font-medium text-slate-500">Admin Portal</p>
             </div>
           </div>
 
@@ -158,10 +167,15 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </div>
           
           <div className="flex items-center gap-3">
-            <button className="relative rounded-xl p-2 text-slate-500 hover:bg-slate-50">
+            {/* Bell with real-time unread count */}
+            <a href="/admin/notifications" className="relative rounded-xl p-2 text-slate-500 hover:bg-slate-50">
               <BellRing className="h-5 w-5" />
-              <div className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
-            </button>
+              {unreadCount > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-black text-white ring-2 ring-white">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </a>
             <div className="hidden h-5 w-px bg-slate-200 sm:block" />
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 font-bold text-white shadow-lg shadow-blue-500/20">
               {me?.name?.charAt(0) || "B"}

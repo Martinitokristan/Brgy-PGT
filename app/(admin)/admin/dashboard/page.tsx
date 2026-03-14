@@ -98,56 +98,52 @@ function DonutChart({
 }
 
 export default function AdminDashboardPage() {
-  const { data: stats, isLoading } = useSWR<Stats>("/api/admin/stats", fetcher);
+  const { data: stats, isLoading } = useSWR<Stats>("/api/admin/stats", fetcher, {
+    refreshInterval: 30000,
+  });
 
   const statCards = [
     {
-      label: "Total Posts",
+      label: "TOTAL POSTS",
       value: stats?.totalPosts ?? 0,
       icon: FileText,
-      color: "border-blue-500",
-      bg: "bg-blue-50",
-      text: "text-blue-600",
+      color: "border-t-blue-500",
+      valueColor: "text-slate-900",
     },
     {
-      label: "Urgent Active",
+      label: "ACTIVE URGENT",
       value: stats?.urgentPosts ?? 0,
       icon: AlertTriangle,
-      color: "border-red-500",
-      bg: "bg-red-50",
-      text: "text-red-600",
+      color: "border-t-red-500",
+      valueColor: "text-red-500",
     },
     {
-      label: "Pending",
+      label: "PENDING",
       value: stats?.pendingPosts ?? 0,
       icon: Clock,
-      color: "border-orange-500",
-      bg: "bg-orange-50",
-      text: "text-orange-600",
+      color: "border-t-orange-500",
+      valueColor: "text-orange-500",
     },
     {
-      label: "In Progress",
+      label: "IN PROGRESS",
       value: stats?.inProgressPosts ?? 0,
       icon: Activity,
-      color: "border-teal-500",
-      bg: "bg-teal-50",
-      text: "text-teal-600",
+      color: "border-t-teal-500",
+      valueColor: "text-teal-500",
     },
     {
-      label: "Resolved",
+      label: "RESOLVED",
       value: stats?.resolvedPosts ?? 0,
       icon: CheckCircle2,
-      color: "border-green-500",
-      bg: "bg-green-50",
-      text: "text-green-600",
+      color: "border-t-green-500",
+      valueColor: "text-green-500",
     },
     {
-      label: "Total Residents",
+      label: "RESIDENTS",
       value: stats?.totalResidents ?? 0,
       icon: Users,
-      color: "border-indigo-500",
-      bg: "bg-indigo-50",
-      text: "text-indigo-600",
+      color: "border-t-blue-600",
+      valueColor: "text-blue-600",
     },
   ];
 
@@ -165,6 +161,14 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-5 p-4 pb-8 sm:p-6">
+      {/* Page Title */}
+      <div className="flex items-center gap-3">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 shadow-md shadow-blue-500/30">
+          <Activity className="h-5 w-5 text-white" />
+        </div>
+        <h1 className="text-xl font-black text-slate-900">Admin Dashboard</h1>
+      </div>
+
       {/* Action Buttons */}
       <div className="flex flex-col gap-3 sm:flex-row">
         <Link
@@ -190,17 +194,15 @@ export default function AdminDashboardPage() {
           return (
             <div
               key={card.label}
-              className={`flex flex-col gap-2 rounded-2xl border-t-4 bg-white px-4 py-4 shadow-sm ${card.color}`}
+              className={`flex flex-col items-center justify-center gap-1 rounded-2xl border-t-4 bg-white px-4 py-5 shadow-sm text-center ${card.color}`}
             >
-              <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${card.bg}`}>
-                <Icon className={`h-5 w-5 ${card.text}`} />
-              </div>
+              <Icon className="h-4 w-4 text-slate-400 mb-1" />
               {isLoading ? (
-                <div className="h-7 w-16 animate-pulse rounded-lg bg-slate-100" />
+                <div className="h-8 w-12 animate-pulse rounded-lg bg-slate-100" />
               ) : (
-                <p className="text-2xl font-black text-slate-900">{card.value}</p>
+                <p className={`text-3xl font-black ${card.valueColor}`}>{card.value}</p>
               )}
-              <p className="text-xs font-semibold text-slate-500">{card.label}</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{card.label}</p>
             </div>
           );
         })}

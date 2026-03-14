@@ -5,6 +5,31 @@ type SmsResult =
   | { success: true; sid: string }
   | { success: false; error: string };
 
+function normalizePhilippineNumber(raw: string): string | null {
+  const cleaned = raw.replace(/[^\d+]/g, "");
+
+  if (cleaned.startsWith("+63")) {
+    const local = cleaned.slice(3).replace(/\D/g, "");
+    return local.length === 10 ? `63${local}` : null;
+  }
+
+  if (cleaned.startsWith("63")) {
+    const local = cleaned.slice(2).replace(/\D/g, "");
+    return local.length === 10 ? `63${local}` : null;
+  }
+
+  if (cleaned.startsWith("0")) {
+    const local = cleaned.slice(1).replace(/\D/g, "");
+    return local.length === 10 ? `63${local}` : null;
+  }
+
+  if (cleaned.startsWith("9")) {
+    return cleaned.length === 10 ? `63${cleaned}` : null;
+  }
+
+  return null;
+}
+
 export async function sendSms(to: string, message: string): Promise<SmsResult> {
   const apiToken = process.env.IPROG_API_TOKEN;
   const endpoint = process.env.IPROG_ENDPOINT;
@@ -17,11 +42,13 @@ export async function sendSms(to: string, message: string): Promise<SmsResult> {
     };
   }
 
-  let phoneNumber = to;
-  if (to.startsWith("+63")) {
-    phoneNumber = "63" + to.slice(3);
-  } else if (to.startsWith("0")) {
-    phoneNumber = "63" + to.slice(1);
+  const phoneNumber = normalizePhilippineNumber(to);
+  if (!phoneNumber) {
+    return {
+      success: false,
+      error:
+        "Invalid phone number format. Use 09XXXXXXXXX or +639XXXXXXXXX.",
+    };
   }
 
   try {
@@ -40,18 +67,38 @@ export async function sendSms(to: string, message: string): Promise<SmsResult> {
 
     const rawText = await response.text();
     console.log("SMS Provider Raw Response:", rawText);
-    const data = JSON.parse(rawText || "{}");
+    let data: Record<string, unknown> = {};
+    try {
+      data = rawText ? (JSON.parse(rawText) as Record<string, unknown>) : {};
+    } catch {
+      data = { message: rawText };
+    }
 
-    if (response.ok && data?.status === 200) {
+    const statusValue = data?.status;
+    const statusIsSuccess =
+      statusValue === 200 ||
+      statusValue === "200" ||
+      statusValue === "success" ||
+      data?.success === true;
+
+    if (response.ok && statusIsSuccess) {
       return {
         success: true,
-        sid: data?.message_id ?? crypto.randomUUID(),
+        sid:
+          (typeof data?.message_id === "string" && data.message_id) ||
+          (typeof data?.id === "string" && data.id) ||
+          crypto.randomUUID(),
       };
     }
 
+    const errorMessage =
+      (typeof data?.message === "string" && data.message) ||
+      (typeof data?.error === "string" && data.error) ||
+      `SMS sending failed (HTTP ${response.status})`;
+
     return {
       success: false,
-      error: (data && (data.message as string)) || "SMS sending failed",
+      error: errorMessage,
     };
   } catch (e) {
     return {

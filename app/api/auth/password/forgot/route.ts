@@ -14,8 +14,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const origin = request.headers.get("origin") ?? "";
-  const redirectTo = `${origin}/(auth)/reset-password`;
+  const origin = request.headers.get("origin") ?? "http://localhost:3000";
+  const redirectTo = `${origin}/reset-password`;
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo,

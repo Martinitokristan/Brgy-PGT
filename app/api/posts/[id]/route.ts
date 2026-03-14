@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
+import { createSupabaseServiceClient } from "@/lib/supabaseService";
 
 type Params = {
   params: Promise<{
@@ -98,20 +99,25 @@ export async function PATCH(request: Request, props: Params) {
   const body = await request.json();
   const { status, admin_response } = body;
 
-  const updates: any = {};
-  if (status) updates.status = status;
+  const updates: Record<string, unknown> = {};
+  if (status !== undefined && status !== null) updates.status = status;
   if (admin_response) {
     updates.admin_response = admin_response;
     updates.responded_by = user.id;
     updates.responded_at = new Date().toISOString();
   }
 
-  const { error } = await supabase
+  // Use service client to bypass RLS for admin updates
+  const service = createSupabaseServiceClient();
+  const { error } = await service
     .from("posts")
     .update(updates)
     .eq("id", id);
 
-  if (error) return NextResponse.json({ error: "Update failed" }, { status: 500 });
+  if (error) {
+    console.error("Post update error:", error);
+    return NextResponse.json({ error: "Update failed" }, { status: 500 });
+  }
   return NextResponse.json({ ok: true });
 }
 
