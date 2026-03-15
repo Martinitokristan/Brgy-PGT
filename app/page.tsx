@@ -142,18 +142,24 @@ export default function LandingPage() {
       )}
 
       {/* Navbar */}
-      <nav className="sticky top-0 z-50 flex items-center justify-between border-b border-slate-100 bg-white/95 px-5 py-3 backdrop-blur-sm">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 shadow-md">
-            <ShieldCheck className="h-5 w-5 text-white" />
+      <nav className="sticky top-0 z-50 flex items-center justify-between border-b border-slate-100 bg-white/95 px-4 py-3 backdrop-blur-sm">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-600 shadow-md">
+            <ShieldCheck className="h-4 w-4 text-white" />
           </div>
-          <span className="text-[16px] font-extrabold text-slate-900">BarangayPGT</span>
+          <span className="truncate text-[15px] font-extrabold text-slate-900">BarangayPGT</span>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setShowLogin(true)} className="rounded-xl px-4 py-2 text-[13px] font-bold text-slate-600 hover:bg-slate-100 transition-colors">
+        <div className="flex shrink-0 items-center gap-1.5 ml-2">
+          <button
+            onClick={() => setShowLogin(true)}
+            className="rounded-xl px-3 py-2 text-[13px] font-bold text-slate-600 hover:bg-slate-100 transition-colors whitespace-nowrap"
+          >
             Sign In
           </button>
-          <Link href="/register" className="rounded-xl bg-blue-600 px-4 py-2 text-[13px] font-bold text-white shadow-md shadow-blue-500/20 hover:bg-blue-700 transition-colors">
+          <Link
+            href="/register"
+            className="rounded-xl bg-blue-600 px-3 py-2 text-[13px] font-bold text-white shadow-md shadow-blue-500/20 hover:bg-blue-700 transition-colors whitespace-nowrap"
+          >
             Join Now
           </Link>
         </div>

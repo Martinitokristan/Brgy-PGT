@@ -32,14 +32,14 @@ export async function GET() {
 
     // Batch-fetch profiles for all post authors
     const userIds = [...new Set(postList.map((p: any) => p.user_id).filter(Boolean))];
-    const profileMap: Record<string, { name: string | null; avatar: string | null }> = {};
+    const profileMap: Record<string, { name: string | null; avatar: string | null; role: string | null }> = {};
     if (userIds.length > 0) {
       const { data: profiles } = await service
         .from("profiles")
-        .select("id, name, avatar")
+        .select("id, name, avatar, role")
         .in("id", userIds);
       for (const p of profiles ?? []) {
-        profileMap[p.id] = { name: p.name, avatar: p.avatar };
+        profileMap[p.id] = { name: p.name, avatar: p.avatar, role: p.role };
       }
     }
 
@@ -83,6 +83,7 @@ export async function GET() {
       return {
         ...post,
         profiles: profileMap[post.user_id] ?? null,
+        author_role: profileMap[post.user_id]?.role ?? null,
         reaction_counts: counts,
         my_reaction: myReaction,
         comment_count: commentsCountMap[post.id] ?? 0,

@@ -32,6 +32,7 @@ type Post = {
   created_at: string | null;
   image: string | null;
   profiles: { name: string; avatar?: string | null } | null;
+  author_role: string | null;
   reaction_counts: Record<string, number>;
   my_reaction: string | null;
   comment_count: number;
@@ -180,6 +181,10 @@ export default function FeedPage() {
 
   const suppressScrollRef = useRef(false);
 
+  // Track which emoji the user is hovering over during drag
+  const [hoveredEmoji, setHoveredEmoji] = useState<string | null>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+
   // Register non-passive touchmove to allow preventDefault when emoji picker is open
   useEffect(() => {
     const el = feedRef.current;
@@ -187,6 +192,16 @@ export default function FeedPage() {
     function onTouchMove(e: TouchEvent) {
       if (suppressScrollRef.current) {
         e.preventDefault();
+        // Detect which emoji button the finger is over
+        const touch = e.touches[0];
+        if (!touch) return;
+        const els = document.elementsFromPoint(touch.clientX, touch.clientY);
+        let found: string | null = null;
+        for (const el of els) {
+          const t = (el as HTMLElement).dataset?.reactionType;
+          if (t) { found = t; break; }
+        }
+        setHoveredEmoji(found);
       }
     }
     el.addEventListener("touchmove", onTouchMove, { passive: false });
@@ -197,8 +212,9 @@ export default function FeedPage() {
     suppressScrollRef.current = false;
     longPressTimer.current = setTimeout(() => {
       suppressScrollRef.current = true;
+      setHoveredEmoji(null);
       setShowingEmojiFor(postId);
-    }, 480);
+    }, 450);
   }
 
   function cancelLongPress() {
@@ -206,21 +222,42 @@ export default function FeedPage() {
   }
 
   function handleTouchMoveReaction() {
-    // finger moved before long-press: cancel
     if (!suppressScrollRef.current) cancelLongPress();
   }
 
-  const handleShare = (postId: number) => {
-    const url = `${window.location.origin}/posts/${postId}`;
-    if (navigator.share) {
-      void navigator.share({
-        title: "Check out this post",
-        url: url,
-      });
+  function handleTouchEndReaction(e: React.TouchEvent, postId: number) {
+    e.preventDefault();
+    cancelLongPress();
+    suppressScrollRef.current = false;
+    if (showingEmojiFor === postId && hoveredEmoji) {
+      // User dragged to an emoji and released
+      handleReact(postId, hoveredEmoji);
+      setHoveredEmoji(null);
+    } else if (showingEmojiFor !== postId) {
+      // Short tap = toggle like
+      handleReact(postId, "like");
     } else {
-      void navigator.clipboard.writeText(url);
-      alert("Link copied to clipboard!");
+      // Opened picker but released without selecting = close
+      setShowingEmojiFor(null);
+      setHoveredEmoji(null);
     }
+  }
+
+  const [sharePostId, setSharePostId] = useState<number | null>(null);
+  const [shareCopied, setShareCopied] = useState(false);
+
+  const handleShare = (postId: number) => {
+    setSharePostId(postId);
+    setShareCopied(false);
+  };
+
+  const shareUrl = sharePostId ? `${typeof window !== "undefined" ? window.location.origin : ""}/posts/${sharePostId}` : "";
+
+  const copyShareLink = () => {
+    void navigator.clipboard.writeText(shareUrl).then(() => {
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    });
   };
 
   const openComments = (postId: number) => {
@@ -434,21 +471,38 @@ export default function FeedPage() {
               <div className="p-4 pb-4 sm:p-6 sm:pb-4">
                 <div className="mb-4 flex items-start justify-between">
                   <div className="flex gap-4">
-                    <Link href={`/profile/${post.user_id}`} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-bold text-sm shadow-md transition-transform hover:scale-105 overflow-hidden">
-                      {post.profiles?.avatar ? (
-                        <img src={getAvatarUrl(post.profiles.avatar)!} alt="" className="h-full w-full object-cover" />
-                      ) : (
-                        (post.profiles?.name || "K").charAt(0)
-                      )}
-                    </Link>
+                    {post.author_role === "admin" ? (
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-bold text-sm shadow-md overflow-hidden">
+                        {post.profiles?.avatar ? (
+                          <img src={getAvatarUrl(post.profiles.avatar)!} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          (post.profiles?.name || "B").charAt(0)
+                        )}
+                      </div>
+                    ) : (
+                      <Link href={`/profile/${post.user_id}`} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-bold text-sm shadow-md transition-transform hover:scale-105 overflow-hidden">
+                        {post.profiles?.avatar ? (
+                          <img src={getAvatarUrl(post.profiles.avatar)!} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          (post.profiles?.name || "K").charAt(0)
+                        )}
+                      </Link>
+                    )}
                     <div>
                       <div className="flex flex-col leading-tight">
-                        <Link 
-                          href={`/profile/${post.user_id}`}
-                          className="text-[16px] font-bold text-[#385898] transition-colors hover:underline"
-                        >
-                          {post.profiles?.name || "Anonymous Resident"}
-                        </Link>
+                        {post.author_role === "admin" ? (
+                          <span className="text-[16px] font-bold text-[#385898] flex items-center gap-1">
+                            {post.profiles?.name || "Barangay Admin"}
+                            <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-blue-600">Admin</span>
+                          </span>
+                        ) : (
+                          <Link 
+                            href={`/profile/${post.user_id}`}
+                            className="text-[16px] font-bold text-[#385898] transition-colors hover:underline"
+                          >
+                            {post.profiles?.name || "Anonymous Resident"}
+                          </Link>
+                        )}
                         <div className="mt-0.5 flex items-center gap-1.5 text-slate-400">
                           <AlertCircle className="h-3.5 w-3.5" /> 
                           <span className="text-[13px] font-medium">• {post.purpose || "General"}</span>
@@ -532,39 +586,46 @@ export default function FeedPage() {
 
                 {/* Buttons Row */}
                 <div className="relative grid grid-cols-3 gap-1 pt-1 sm:gap-2">
-                  {/* Emoji picker popup */}
+                  {/* Facebook-style emoji picker popup */}
                   {showingEmojiFor === post.id && (
                     <>
-                      <div className="fixed inset-0 z-10" onClick={() => setShowingEmojiFor(null)} />
-                      <div className="absolute -top-14 left-0 z-20 flex items-center gap-1 rounded-full bg-white px-3 py-2 shadow-2xl ring-1 ring-slate-100">
+                      <div className="fixed inset-0 z-10" onClick={() => { setShowingEmojiFor(null); setHoveredEmoji(null); }} />
+                      <div
+                        ref={emojiPickerRef}
+                        className="absolute -top-16 left-0 z-20 flex items-end gap-1 rounded-full bg-white px-3 py-2.5 shadow-2xl ring-1 ring-slate-100"
+                        style={{ animation: "scaleIn 0.15s ease-out" }}
+                      >
                         {reactionEmojis.map((r) => (
                           <button
                             key={r.type}
-                            onClick={() => handleReact(post.id, r.type)}
+                            data-reaction-type={r.type}
+                            onClick={() => { handleReact(post.id, r.type); setHoveredEmoji(null); }}
+                            onMouseEnter={() => setHoveredEmoji(r.type)}
+                            onMouseLeave={() => setHoveredEmoji(null)}
                             title={r.label}
-                            className="group flex flex-col items-center transition-transform hover:-translate-y-2 hover:scale-125 active:scale-110"
+                            className="relative flex flex-col items-center transition-all duration-150"
+                            style={{
+                              transform: hoveredEmoji === r.type ? "translateY(-10px) scale(1.45)" : "translateY(0) scale(1)",
+                            }}
                           >
-                            <span className="text-[22px] leading-none">{r.emoji}</span>
-                            <span className="mt-0.5 hidden text-[9px] font-bold text-slate-500 group-hover:block">{r.label}</span>
+                            <span className="text-[24px] leading-none select-none" data-reaction-type={r.type}>{r.emoji}</span>
+                            {hoveredEmoji === r.type && (
+                              <span className="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-slate-900/80 px-2 py-0.5 text-[9px] font-bold text-white">{r.label}</span>
+                            )}
                           </button>
                         ))}
                       </div>
                     </>
                   )}
 
-                  {/* Like button — tap = toggle, hold = emoji picker */}
+                  {/* Like button — tap = toggle like, hold = emoji picker, drag to emoji */}
                   <button
                     onMouseDown={() => startLongPress(post.id)}
                     onMouseUp={() => { cancelLongPress(); if (showingEmojiFor !== post.id) handleReact(post.id, "like"); }}
                     onMouseLeave={cancelLongPress}
                     onTouchStart={(e) => { e.stopPropagation(); startLongPress(post.id); }}
                     onTouchMove={handleTouchMoveReaction}
-                    onTouchEnd={(e) => {
-                      e.preventDefault();
-                      cancelLongPress();
-                      suppressScrollRef.current = false;
-                      if (showingEmojiFor !== post.id) handleReact(post.id, "like");
-                    }}
+                    onTouchEnd={(e) => handleTouchEndReaction(e, post.id)}
                     className={`flex min-w-0 select-none items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-bold transition-all hover:bg-slate-50 sm:gap-2 sm:text-[14px] ${
                       post.my_reaction ? "text-blue-600" : "text-[#65676B]"
                     }`}
@@ -608,6 +669,74 @@ export default function FeedPage() {
       onClose={() => setIsDrawerOpen(false)}
       me={me}
     />
+
+    {/* Share Modal */}
+    {sharePostId !== null && (
+      <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center">
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setSharePostId(null)} />
+        <div className="relative z-10 w-full max-w-sm mx-4 overflow-hidden rounded-t-3xl sm:rounded-3xl bg-white shadow-2xl animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200">
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+            <h3 className="text-[15px] font-bold text-slate-900">Share Post</h3>
+            <button onClick={() => setSharePostId(null)} className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="p-5 space-y-3">
+            {/* Copy Link */}
+            <button
+              onClick={copyShareLink}
+              className="flex w-full items-center gap-3 rounded-2xl bg-slate-50 px-4 py-3.5 text-left transition-colors hover:bg-slate-100"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-slate-600">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+              </div>
+              <span className="text-[14px] font-semibold text-slate-700">{shareCopied ? "Link copied!" : "Copy Link"}</span>
+            </button>
+            {/* Share on Facebook */}
+            <a
+              href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`}
+              target="_blank" rel="noopener noreferrer"
+              onClick={() => setSharePostId(null)}
+              className="flex w-full items-center gap-3 rounded-2xl bg-[#1877F2]/10 px-4 py-3.5 text-left transition-colors hover:bg-[#1877F2]/20"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1877F2] text-white">
+                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+              </div>
+              <span className="text-[14px] font-semibold text-[#1877F2]">Share on Facebook</span>
+            </a>
+            {/* Share on Messenger */}
+            <a
+              href={`fb-messenger://share?link=${encodeURIComponent(shareUrl)}`}
+              onClick={() => setSharePostId(null)}
+              className="flex w-full items-center gap-3 rounded-2xl bg-[#0084FF]/10 px-4 py-3.5 text-left transition-colors hover:bg-[#0084FF]/20"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#0084FF] to-[#A334FA] text-white">
+                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.373 0 0 4.974 0 11.111c0 3.498 1.744 6.614 4.469 8.683V24l4.088-2.242c1.092.3 2.246.464 3.443.464 6.627 0 12-4.975 12-11.111S18.627 0 12 0zm1.191 14.963l-3.055-3.26-5.963 3.26L10.732 8l3.131 3.259L19.752 8l-6.561 6.963z"/></svg>
+              </div>
+              <span className="text-[14px] font-semibold text-[#0084FF]">Send via Messenger</span>
+            </a>
+            {/* Share on TikTok */}
+            <a
+              href={`https://www.tiktok.com/share?url=${encodeURIComponent(shareUrl)}`}
+              target="_blank" rel="noopener noreferrer"
+              onClick={() => setSharePostId(null)}
+              className="flex w-full items-center gap-3 rounded-2xl bg-slate-50 px-4 py-3.5 text-left transition-colors hover:bg-slate-100"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black text-white">
+                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.19 8.19 0 004.79 1.53V6.76a4.85 4.85 0 01-1.02-.07z"/></svg>
+              </div>
+              <span className="text-[14px] font-semibold text-slate-700">Share on TikTok</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    )}
+    <style>{`
+      @keyframes scaleIn {
+        from { transform: scale(0.7); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+      }
+    `}</style>
     </>
   );
 }
