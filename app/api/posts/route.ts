@@ -13,14 +13,10 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { data, error } = await service
+    // Fetch posts without joins to avoid schema cache FK issues with service client
+    const { data: postsRaw, error } = await service
       .from("posts")
-      .select(`
-        *,
-        profiles(name, avatar),
-        reactions(type, user_id),
-        comments(id)
-      `)
+      .select("*")
       .order("created_at", { ascending: false })
       .limit(50);
 
@@ -32,9 +28,48 @@ export async function GET() {
       );
     }
 
+    const postList = postsRaw ?? [];
+
+    // Batch-fetch profiles for all post authors
+    const userIds = [...new Set(postList.map((p: any) => p.user_id).filter(Boolean))];
+    const profileMap: Record<string, { name: string | null; avatar: string | null }> = {};
+    if (userIds.length > 0) {
+      const { data: profiles } = await service
+        .from("profiles")
+        .select("id, name, avatar")
+        .in("id", userIds);
+      for (const p of profiles ?? []) {
+        profileMap[p.id] = { name: p.name, avatar: p.avatar };
+      }
+    }
+
+    // Batch-fetch reactions for all posts
+    const postIds = postList.map((p: any) => p.id);
+    const reactionsMap: Record<number, { type: string; user_id: string }[]> = {};
+    const commentsCountMap: Record<number, number> = {};
+
+    if (postIds.length > 0) {
+      const { data: reactions } = await service
+        .from("reactions")
+        .select("post_id, type, user_id")
+        .in("post_id", postIds);
+      for (const r of reactions ?? []) {
+        if (!reactionsMap[r.post_id]) reactionsMap[r.post_id] = [];
+        reactionsMap[r.post_id].push(r);
+      }
+
+      const { data: comments } = await service
+        .from("comments")
+        .select("id, post_id")
+        .in("post_id", postIds);
+      for (const c of comments ?? []) {
+        commentsCountMap[c.post_id] = (commentsCountMap[c.post_id] ?? 0) + 1;
+      }
+    }
+
     // Transform data to include counts and user status
-    const posts = (data ?? []).map((post: any) => {
-      const reactions = post.reactions || [];
+    const posts = postList.map((post: any) => {
+      const reactions = reactionsMap[post.id] || [];
       const counts: Record<string, number> = {};
       let myReaction = null;
 
@@ -47,12 +82,10 @@ export async function GET() {
 
       return {
         ...post,
-        profiles: post.profiles,
+        profiles: profileMap[post.user_id] ?? null,
         reaction_counts: counts,
         my_reaction: myReaction,
-        comment_count: post.comments?.length || 0,
-        reactions: undefined, // remove raw data
-        comments: undefined,   // remove raw data
+        comment_count: commentsCountMap[post.id] ?? 0,
       };
     });
 
