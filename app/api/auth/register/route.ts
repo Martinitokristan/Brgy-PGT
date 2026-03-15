@@ -175,7 +175,14 @@ async function handleRegister(request: Request) {
 
   // Send the verification email with magic link
   try {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+    if (!appUrl) {
+      console.error("NEXT_PUBLIC_APP_URL is not set!");
+      return NextResponse.json(
+        { error: "Server configuration error. Please contact support." },
+        { status: 500 }
+      );
+    }
     const verificationUrl = `${appUrl}/api/auth/register?action=verify&token=${token}&email=${encodeURIComponent(email)}`;
 
     await sendRegistrationLinkEmail(email, name, verificationUrl);
@@ -268,7 +275,11 @@ async function handleResend(body: any) {
 
   // Send the verification email
   try {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+    if (!appUrl) {
+      console.error("NEXT_PUBLIC_APP_URL is not set!");
+      return NextResponse.json({ error: "Server configuration error." }, { status: 500 });
+    }
     const verificationUrl = `${appUrl}/api/auth/register?action=verify&token=${token}&email=${encodeURIComponent(email)}`;
     await sendRegistrationLinkEmail(email, pending.name, verificationUrl);
   } catch (emailError) {
@@ -324,7 +335,7 @@ async function handleVerify(request: Request, searchParams: URLSearchParams) {
   const token = searchParams.get("token");
   const email = searchParams.get("email");
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://barangay-pgt.vercel.app";
 
   if (!token || !email) {
     return NextResponse.redirect(`${appUrl}/verify-success?error=Invalid verification link`);

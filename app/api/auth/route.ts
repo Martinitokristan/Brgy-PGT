@@ -276,8 +276,8 @@ async function handlePasswordForgot(clonedReq: Request, body: any) {
     );
   }
 
-  const origin = clonedReq.headers.get("origin") ?? "http://localhost:3000";
-  const redirectTo = `${origin}/reset-password`;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || clonedReq.headers.get("origin") || "http://localhost:3000";
+  const redirectTo = `${appUrl}/reset-password`;
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
 

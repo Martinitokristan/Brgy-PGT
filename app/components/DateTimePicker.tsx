@@ -51,6 +51,7 @@ export default function DateTimePicker({
   const [period, setPeriod] = useState<"AM" | "PM">(parsed ? (parsed.getHours() >= 12 ? "PM" : "AM") : "AM");
 
   const ref = useRef<HTMLDivElement>(null);
+  const [openAbove, setOpenAbove] = useState(false);
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -59,6 +60,14 @@ export default function DateTimePicker({
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  useEffect(() => {
+    if (open && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      setOpenAbove(spaceBelow < 400);
+    }
+  }, [open]);
 
   useEffect(() => {
     if (open && value) {
@@ -176,7 +185,7 @@ export default function DateTimePicker({
       )}
 
       {open && (
-        <div className="absolute left-0 right-0 z-50 mt-2 overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className={`absolute left-0 right-0 z-50 overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 animate-in fade-in duration-200 ${openAbove ? 'bottom-full mb-2' : 'top-full mt-2'}`} style={{ maxHeight: '80vh', overflowY: 'auto' }}>
           {/* Header */}
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
             {view !== "time" ? (

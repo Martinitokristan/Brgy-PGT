@@ -87,7 +87,7 @@ export async function sendRegistrationLinkEmail(
       </div>
 
       <div style="border-top:1px solid #e2e8f0;padding-top:24px;text-align:center;">
-        <p style="color:#94a3b8;font-size:13px;margin:0;">This verification link will expire in 24 hours.</p>
+        <p style="color:#94a3b8;font-size:13px;margin:0;">This verification link will expire in 15 minutes.</p>
         <p style="color:#94a3b8;font-size:13px;margin:8px 0 0 0;">If you didn't sign up for an account, you can safely ignore this email.</p>
       </div>
     </div>

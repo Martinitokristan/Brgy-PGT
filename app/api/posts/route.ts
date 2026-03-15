@@ -4,55 +4,64 @@ import { createSupabaseServiceClient } from "@/lib/supabaseService";
 
 // GET /api/posts - list posts
 export async function GET() {
-  const supabase = await createSupabaseServerClient();
+  try {
+    const supabase = await createSupabaseServerClient();
 
-  const { data: userData } = await supabase.auth.getUser();
-  const userId = userData.user?.id;
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
 
-  const { data, error } = await supabase
-    .from("posts")
-    .select(`
-      *,
-      profiles(name, avatar),
-      reactions(type, user_id),
-      comments(id)
-    `)
-    .order("created_at", { ascending: false })
-    .limit(50);
-
-  if (error) {
-    console.error(error);
-    return NextResponse.json(
-      { error: "Failed to fetch posts" },
-      { status: 500 }
-    );
-  }
-
-  // Transform data to include counts and user status
-  const posts = (data ?? []).map((post: any) => {
-    const reactions = post.reactions || [];
-    const counts: Record<string, number> = {};
-    let myReaction = null;
-
-    for (const r of reactions) {
-      counts[r.type] = (counts[r.type] ?? 0) + 1;
-      if (userId && r.user_id === userId) {
-        myReaction = r.type;
-      }
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    return {
-      ...post,
-      profiles: post.profiles,
-      reaction_counts: counts,
-      my_reaction: myReaction,
-      comment_count: post.comments?.length || 0,
-      reactions: undefined, // remove raw data
-      comments: undefined,   // remove raw data
-    };
-  });
+    const { data, error } = await supabase
+      .from("posts")
+      .select(`
+        *,
+        profiles(name, avatar),
+        reactions(type, user_id),
+        comments(id)
+      `)
+      .order("created_at", { ascending: false })
+      .limit(50);
 
-  return NextResponse.json(posts);
+    if (error) {
+      console.error("Posts fetch error:", error);
+      return NextResponse.json(
+        { error: "Failed to fetch posts" },
+        { status: 500 }
+      );
+    }
+
+    // Transform data to include counts and user status
+    const posts = (data ?? []).map((post: any) => {
+      const reactions = post.reactions || [];
+      const counts: Record<string, number> = {};
+      let myReaction = null;
+
+      for (const r of reactions) {
+        counts[r.type] = (counts[r.type] ?? 0) + 1;
+        if (userId && r.user_id === userId) {
+          myReaction = r.type;
+        }
+      }
+
+      return {
+        ...post,
+        profiles: post.profiles,
+        reaction_counts: counts,
+        my_reaction: myReaction,
+        comment_count: post.comments?.length || 0,
+        reactions: undefined, // remove raw data
+        comments: undefined,   // remove raw data
+      };
+    });
+
+    return NextResponse.json(posts);
+  } catch (err) {
+    console.error("Posts GET unhandled error:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }
 
 // POST /api/posts - create a new post for the current user
