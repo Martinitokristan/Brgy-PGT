@@ -74,7 +74,7 @@ function VerifyDeviceForm() {
       return;
     }
 
-    router.push("/");
+    router.push("/feed");
   }
 
   async function handleResend() {
