@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import { Clock, LogOut, ArrowLeft } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -13,9 +14,30 @@ export default function PendingApprovalPage() {
     refreshInterval: 5000, // Poll every 5 seconds
   });
 
+  // Real-time subscription to profile changes
+  useEffect(() => {
+    if (!me?.id) return;
+
+    const channel = supabase
+      .channel(`profile-${me.id}`)
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "profiles",
+        filter: `id=eq.${me.id}`,
+      }, () => {
+        mutate(); // Refetch profile data
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [me?.id, mutate]);
+
   // Redirect if actually approved
   useEffect(() => {
-    if (me?.profile?.is_approved) {
+    if (me?.is_approved) {
       router.push("/feed");
     }
   }, [me, router]);

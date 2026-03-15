@@ -14,6 +14,17 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Check if user is approved
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_approved")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (!profile || !profile.is_approved) {
+      return NextResponse.json({ error: "Account not approved" }, { status: 403 });
+    }
+
     const { data, error } = await supabase
       .from("posts")
       .select(`
