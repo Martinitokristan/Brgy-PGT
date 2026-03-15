@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
+import { createSupabaseServiceClient } from "@/lib/supabaseService";
 
 export async function GET() {
   const supabase = await createSupabaseServerClient();
+  const service = createSupabaseServiceClient();
 
   const {
     data: { user },
@@ -13,7 +15,7 @@ export async function GET() {
   }
 
   // Get user's barangay_id from profile.
-  const { data: profile, error: profileError } = await supabase
+  const { data: profile, error: profileError } = await service
     .from("profiles")
     .select("barangay_id")
     .eq("id", user.id)
@@ -28,7 +30,7 @@ export async function GET() {
 
   const today = new Date().toISOString().slice(0, 10);
 
-  const { data, error } = await supabase
+  const { data, error } = await service
     .from("events")
     .select("id, title, description, location, event_date, image")
     .eq("barangay_id", profile.barangay_id)

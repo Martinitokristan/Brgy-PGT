@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
+import { createSupabaseServiceClient } from "@/lib/supabaseService";
 
 // ─── GET /api/notifications?action=list|unread_count ──────────
 export async function GET(request: Request) {
@@ -38,6 +39,7 @@ export async function POST(request: Request) {
 // ═══════════════════════════════════════════════════════════════
 async function handleList() {
   const supabase = await createSupabaseServerClient();
+  const service = createSupabaseServiceClient();
 
   const {
     data: { user },
@@ -47,7 +49,7 @@ async function handleList() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await service
     .from("notifications")
     .select("*")
     .eq("user_id", user.id)
@@ -67,6 +69,7 @@ async function handleList() {
 // ═══════════════════════════════════════════════════════════════
 async function handleUnreadCount() {
   const supabase = await createSupabaseServerClient();
+  const service = createSupabaseServiceClient();
 
   const {
     data: { user },
@@ -76,7 +79,7 @@ async function handleUnreadCount() {
     return NextResponse.json({ count: 0 }, { status: 200 });
   }
 
-  const { count, error } = await supabase
+  const { count, error } = await service
     .from("notifications")
     .select("*", { count: "exact", head: true })
     .eq("user_id", user.id)
@@ -95,6 +98,7 @@ async function handleUnreadCount() {
 // ═══════════════════════════════════════════════════════════════
 async function handleMarkAllRead() {
   const supabase = await createSupabaseServerClient();
+  const service = createSupabaseServiceClient();
 
   const {
     data: { user },
@@ -104,7 +108,7 @@ async function handleMarkAllRead() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { error } = await supabase
+  const { error } = await service
     .from("notifications")
     .update({ is_read: true })
     .eq("user_id", user.id)
@@ -123,6 +127,7 @@ async function handleMarkAllRead() {
 // ═══════════════════════════════════════════════════════════════
 async function handleMarkOneRead(body: any) {
   const supabase = await createSupabaseServerClient();
+  const service = createSupabaseServiceClient();
 
   const id = Number(body?.id);
   if (!id || Number.isNaN(id)) {
@@ -137,7 +142,7 @@ async function handleMarkOneRead(body: any) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { error } = await supabase
+  const { error } = await service
     .from("notifications")
     .update({ is_read: true })
     .eq("id", id)

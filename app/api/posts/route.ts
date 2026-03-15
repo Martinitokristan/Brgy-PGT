@@ -6,6 +6,7 @@ import { createSupabaseServiceClient } from "@/lib/supabaseService";
 export async function GET() {
   try {
     const supabase = await createSupabaseServerClient();
+    const service = createSupabaseServiceClient();
 
     const { data: userData } = await supabase.auth.getUser();
     const userId = userData.user?.id;
@@ -14,18 +15,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Check if user is approved
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("is_approved")
-      .eq("id", userId)
-      .maybeSingle();
-
-    if (!profile || !profile.is_approved) {
-      return NextResponse.json({ error: "Account not approved" }, { status: 403 });
-    }
-
-    const { data, error } = await supabase
+    const { data, error } = await service
       .from("posts")
       .select(`
         *,
@@ -123,7 +113,7 @@ export async function POST(request: Request) {
     imagePath = filePath;
   }
 
-  const { data: profile } = await supabase
+  const { data: profile } = await supabaseService
     .from("profiles")
     .select("barangay_id")
     .eq("id", user.id)
@@ -131,7 +121,7 @@ export async function POST(request: Request) {
 
   const barangayId = profile?.barangay_id;
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseService
     .from("posts")
     .insert({
       user_id: user.id,

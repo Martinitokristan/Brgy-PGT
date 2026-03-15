@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
+import { createSupabaseServiceClient } from "@/lib/supabaseService";
 
 type Params = {
   params: Promise<{
@@ -10,6 +11,7 @@ type Params = {
 // PATCH /api/posts/comments/:id - update own comment
 export async function PATCH(request: Request, props: Params) {
   const supabase = await createSupabaseServerClient();
+  const service = createSupabaseServiceClient();
   const { id: idStr } = await props.params;
   const id = Number(idStr);
 
@@ -35,7 +37,7 @@ export async function PATCH(request: Request, props: Params) {
     );
   }
 
-  const { error } = await supabase
+  const { error } = await service
     .from("comments")
     .update({ body: commentBody })
     .eq("id", id)
@@ -55,6 +57,7 @@ export async function PATCH(request: Request, props: Params) {
 // DELETE /api/posts/comments/:id - delete own comment
 export async function DELETE(_request: Request, props: Params) {
   const supabase = await createSupabaseServerClient();
+  const service = createSupabaseServiceClient();
   const { id: idStr } = await props.params;
   const id = Number(idStr);
 
@@ -70,7 +73,7 @@ export async function DELETE(_request: Request, props: Params) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { error } = await supabase
+  const { error } = await service
     .from("comments")
     .delete()
     .eq("id", id)

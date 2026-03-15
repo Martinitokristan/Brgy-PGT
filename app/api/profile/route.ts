@@ -27,6 +27,7 @@ export async function PATCH(request: Request) {
 // ═══════════════════════════════════════════════════════════════
 async function handleGetMe() {
   const supabase = await createSupabaseServerClient();
+  const service = createSupabaseServiceClient();
 
   const {
     data: { user },
@@ -37,7 +38,7 @@ async function handleGetMe() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await service
     .from("profiles")
     .select(
       "id, name, email, role, is_approved, barangay_id, phone, purok_address, sex, birth_date, age, avatar, cover_photo"
@@ -144,7 +145,7 @@ async function handleUpdateMe(request: Request) {
     return NextResponse.json({ ok: true }, { status: 200 });
   }
 
-  const { error } = await supabase
+  const { error } = await supabaseService
     .from("profiles")
     .update(updates)
     .eq("id", user.id);

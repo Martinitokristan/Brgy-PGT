@@ -10,7 +10,7 @@ type Params = {
 
 // GET /api/posts/:id - single post with basic fields
 export async function GET(_request: Request, props: Params) {
-  const supabase = await createSupabaseServerClient();
+  const service = createSupabaseServiceClient();
   const { id: idStr } = await props.params;
   const id = Number(idStr);
 
@@ -18,7 +18,7 @@ export async function GET(_request: Request, props: Params) {
     return NextResponse.json({ error: "Invalid id" }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await service
     .from("posts")
     .select(
       "id,title,description,purpose,urgency_level,status,created_at,barangay_id,user_id,image,profiles(name)"
@@ -44,6 +44,7 @@ export async function GET(_request: Request, props: Params) {
 // DELETE /api/posts/:id - delete post (admin or owner)
 export async function DELETE(_request: Request, props: Params) {
   const supabase = await createSupabaseServerClient();
+  const service = createSupabaseServiceClient();
   const { id: idStr } = await props.params;
   const id = Number(idStr);
 
@@ -51,7 +52,7 @@ export async function DELETE(_request: Request, props: Params) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   // Get current user's profile to check role
-  const { data: profile } = await supabase
+  const { data: profile } = await service
     .from("profiles")
     .select("role")
     .eq("id", user.id)
@@ -59,7 +60,7 @@ export async function DELETE(_request: Request, props: Params) {
 
   const isAdmin = profile?.role === "admin";
 
-  const { data: post } = await supabase
+  const { data: post } = await service
     .from("posts")
     .select("user_id")
     .eq("id", id)
@@ -71,7 +72,7 @@ export async function DELETE(_request: Request, props: Params) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { error } = await supabase.from("posts").delete().eq("id", id);
+  const { error } = await service.from("posts").delete().eq("id", id);
   if (error) return NextResponse.json({ error: "Delete failed" }, { status: 500 });
 
   return NextResponse.json({ ok: true });
@@ -80,13 +81,14 @@ export async function DELETE(_request: Request, props: Params) {
 // PATCH /api/posts/:id - update post status/admin_response (admin only)
 export async function PATCH(request: Request, props: Params) {
   const supabase = await createSupabaseServerClient();
+  const service = createSupabaseServiceClient();
   const { id: idStr } = await props.params;
   const id = Number(idStr);
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data: profile } = await supabase
+  const { data: profile } = await service
     .from("profiles")
     .select("role")
     .eq("id", user.id)
@@ -107,8 +109,6 @@ export async function PATCH(request: Request, props: Params) {
     updates.responded_at = new Date().toISOString();
   }
 
-  // Use service client to bypass RLS for admin updates
-  const service = createSupabaseServiceClient();
   const { error } = await service
     .from("posts")
     .update(updates)

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
+import { createSupabaseServiceClient } from "@/lib/supabaseService";
 
 type Params = {
   params: Promise<{
@@ -9,13 +10,14 @@ type Params = {
 
 export async function GET(_request: Request, props: Params) {
   const supabase = await createSupabaseServerClient();
+  const service = createSupabaseServiceClient();
   const { id: targetUserId } = await props.params;
 
   const { data: userData } = await supabase.auth.getUser();
   const currentUserId = userData.user?.id;
 
   // 1. Fetch Profile info
-  const { data: profile, error: profileError } = await supabase
+  const { data: profile, error: profileError } = await service
     .from("profiles")
     .select("*, barangays(name)")
     .eq("id", targetUserId)
@@ -28,7 +30,7 @@ export async function GET(_request: Request, props: Params) {
   // 1.5 Privacy Check: Residents/Riders cannot view Admin profiles
   if (profile.role === "admin" && currentUserId !== targetUserId) {
     // Check if the current user is also an admin
-    const { data: currentUserProfile } = await supabase
+    const { data: currentUserProfile } = await service
       .from("profiles")
       .select("role")
       .eq("id", currentUserId)
@@ -41,15 +43,15 @@ export async function GET(_request: Request, props: Params) {
 
   // 2. Fetch Stats
   const [postsCount, followersCount, followingCount] = await Promise.all([
-    supabase.from("posts").select("id", { count: "exact", head: true }).eq("user_id", targetUserId),
-    supabase.from("followers").select("id", { count: "exact", head: true }).eq("following_id", targetUserId),
-    supabase.from("followers").select("id", { count: "exact", head: true }).eq("follower_id", targetUserId),
+    service.from("posts").select("id", { count: "exact", head: true }).eq("user_id", targetUserId),
+    service.from("followers").select("id", { count: "exact", head: true }).eq("following_id", targetUserId),
+    service.from("followers").select("id", { count: "exact", head: true }).eq("follower_id", targetUserId),
   ]);
 
   // 3. Check if following
   let isFollowing = false;
   if (currentUserId && currentUserId !== targetUserId) {
-    const { count } = await supabase
+    const { count } = await service
       .from("followers")
       .select("id", { count: "exact", head: true })
       .eq("follower_id", currentUserId)
@@ -58,7 +60,7 @@ export async function GET(_request: Request, props: Params) {
   }
 
   // 4. Fetch User Posts (latest 10)
-  const { data: posts } = await supabase
+  const { data: posts } = await service
     .from("posts")
     .select(`
       *,
