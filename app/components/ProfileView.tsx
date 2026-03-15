@@ -380,31 +380,33 @@ export default function ProfileView({ userId }: { userId: string }) {
             {user.role}
           </span>
 
+          {/* Counts row */}
+          <div className="mt-3 flex items-center justify-center gap-1 text-[13px] font-semibold text-slate-500 dark:text-slate-400">
+            <span><span className="font-bold text-slate-900 dark:text-white">{stats.followers_count}</span> {t("followers")}</span>
+            <span className="px-1 text-slate-300 dark:text-slate-600">•</span>
+            <span><span className="font-bold text-slate-900 dark:text-white">{stats.following_count}</span> {t("following")}</span>
+            <span className="px-1 text-slate-300 dark:text-slate-600">•</span>
+            <span><span className="font-bold text-slate-900 dark:text-white">{stats.posts_count}</span> {t("posts")}</span>
+          </div>
+
           {/* Public info strip — always visible to everyone */}
-          <div className="mt-3 flex flex-col items-center gap-1.5 text-[13px] font-medium text-slate-500 dark:text-slate-400">
-            {user.purok_address && (
+          <div className="mt-2 flex flex-col items-center gap-1.5 text-[13px] font-medium text-slate-500 dark:text-slate-400">
+            {user.purok_address ? (
               <div className="flex items-center gap-1.5">
                 <MapPin className="h-3.5 w-3.5 text-slate-400" />
                 <span>{user.purok_address}, {user.barangays?.name || "Barangay Pagatpatan"}</span>
               </div>
-            )}
-            {!user.purok_address && (
+            ) : (
               <div className="flex items-center gap-1.5">
                 <MapPin className="h-3.5 w-3.5 text-slate-400" />
                 <span>{user.barangays?.name || "Barangay Pagatpatan"}</span>
               </div>
             )}
-            {/* Email & phone visible only to owner or admin */}
+            {/* Email visible only to owner or admin — phone stays in About tab only */}
             {(isOwn || isAdminView) && user.email && (
               <div className="flex items-center gap-1.5">
                 <Mail className="h-3.5 w-3.5 text-slate-400" />
                 <span className="text-[12px]">{user.email}</span>
-              </div>
-            )}
-            {(isOwn || isAdminView) && user.phone && (
-              <div className="flex items-center gap-1.5">
-                <Phone className="h-3.5 w-3.5 text-slate-400" />
-                <span className="text-[13px] font-semibold text-slate-600 dark:text-slate-300">{formatPhoneForDisplay(user.phone)}</span>
               </div>
             )}
           </div>
@@ -429,10 +431,25 @@ export default function ProfileView({ userId }: { userId: string }) {
                 {showFollowMenu && is_following && (
                   <>
                     <div className="fixed inset-0 z-10" onClick={() => setShowFollowMenu(false)} />
-                    <div className="absolute left-0 top-full z-20 mt-2 w-52 overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-200 animate-in fade-in slide-in-from-top-1 duration-150">
-                      <button onClick={() => { handleFollow(); setShowFollowMenu(false); }} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"><UserMinus size={16} /> {t("unfollow")}</button>
-                      <button onClick={() => setShowFollowMenu(false)} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"><BellOff size={16} /> {t("snooze_30")}</button>
-                      <button onClick={() => setShowFollowMenu(false)} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold text-blue-600 hover:bg-blue-50 transition-colors"><BellRing size={16} /> {t("bell_priority")}<span className="ml-auto text-[10px] font-bold uppercase text-blue-400 bg-blue-50 px-2 py-0.5 rounded-full">{t("notify_first")}</span></button>
+                    <div className="absolute left-0 top-full z-20 mt-2 w-56 overflow-hidden rounded-2xl bg-white dark:bg-slate-800 shadow-2xl ring-1 ring-slate-200 dark:ring-slate-700 animate-in fade-in slide-in-from-top-1 duration-150">
+                      <div className="px-4 pt-3 pb-1">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Snooze notifications</p>
+                      </div>
+                      <button onClick={() => setShowFollowMenu(false)} className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                        <BellOff size={16} className="text-slate-400" /> Snooze for 7 days
+                      </button>
+                      <button onClick={() => setShowFollowMenu(false)} className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                        <BellOff size={16} className="text-slate-400" /> Snooze for 30 days
+                      </button>
+                      <div className="my-1 border-t border-slate-100 dark:border-slate-700" />
+                      <button onClick={() => setShowFollowMenu(false)} className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-semibold text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+                        <BellRing size={16} /> Get notifications
+                        <span className="ml-auto text-[9px] font-bold uppercase tracking-wide text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-1.5 py-0.5 rounded-full">First</span>
+                      </button>
+                      <div className="my-1 border-t border-slate-100 dark:border-slate-700" />
+                      <button onClick={() => { handleFollow(); setShowFollowMenu(false); }} className="flex w-full items-center gap-3 px-4 py-2.5 pb-3 text-left text-sm font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                        <UserMinus size={16} /> Unfollow
+                      </button>
                     </div>
                   </>
                 )}

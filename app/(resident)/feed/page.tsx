@@ -513,34 +513,34 @@ export default function FeedPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    {post.status === "resolved" && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500 px-3 py-1 text-[10px] font-bold text-white shadow-sm">
-                        <CheckCircle2 className="h-3 w-3" />
-                        Resolved
-                      </span>
-                    )}
-                    {post.status === "in_progress" && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-teal-500 px-3 py-1 text-[10px] font-bold text-white shadow-sm">
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                        In Progress
-                      </span>
-                    )}
-                    {post.status === "pending" && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-orange-400 px-3 py-1 text-[10px] font-bold text-white shadow-sm">
-                        Pending
-                      </span>
-                    )}
+                  <div className="flex items-center gap-2 shrink-0">
                     <button className="text-slate-300 hover:text-slate-600">
                       <MoreHorizontal className="h-5 w-5" />
                     </button>
                   </div>
                 </div>
 
-                <div className="mb-4 space-y-1">
-                  <h2 className="text-[18px] font-extrabold text-slate-900 dark:text-white leading-tight tracking-tight">
-                    {post.title || "No Title"}
-                  </h2>
+                <div className="mb-3 space-y-1">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <h2 className="text-[18px] font-extrabold text-slate-900 dark:text-white leading-tight tracking-tight">
+                      {post.title || "No Title"}
+                    </h2>
+                    {post.status === "resolved" && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2.5 py-0.5 text-[10px] font-bold text-white shadow-sm shrink-0">
+                        <CheckCircle2 className="h-3 w-3" />Resolved
+                      </span>
+                    )}
+                    {post.status === "in_progress" && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-teal-500 px-2.5 py-0.5 text-[10px] font-bold text-white shadow-sm shrink-0">
+                        <Loader2 className="h-3 w-3 animate-spin" />In Progress
+                      </span>
+                    )}
+                    {post.status === "pending" && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-orange-400 px-2.5 py-0.5 text-[10px] font-bold text-white shadow-sm shrink-0">
+                        Pending
+                      </span>
+                    )}
+                  </div>
                   <p className="text-[15px] font-medium leading-relaxed text-slate-500/90 dark:text-slate-400">
                     {post.description}
                   </p>
