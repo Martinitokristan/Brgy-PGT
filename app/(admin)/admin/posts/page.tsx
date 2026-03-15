@@ -17,7 +17,11 @@ type Post = {
   profiles?: { name: string | null } | null;
 };
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+const fetcher = (url: string) =>
+  fetch(url).then((r) => {
+    if (!r.ok) throw new Error(`${r.status}`);
+    return r.json();
+  });
 
 const URGENCY_COLORS: Record<string, string> = {
   high: "bg-red-100 text-red-700",
