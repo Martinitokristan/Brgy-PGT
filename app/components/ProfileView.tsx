@@ -320,191 +320,137 @@ export default function ProfileView({ userId }: { userId: string }) {
 
   return (
     <div className="relative flex flex-1 flex-col bg-white dark:bg-slate-950 min-h-screen overflow-x-hidden">
-      {/* Cover area — extends ~half over the profile avatar */}
-      <div className="relative h-72 w-full overflow-hidden bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 sm:h-80">
+
+      {/* ── Cover photo – full width, taller so it visually extends behind the avatar ── */}
+      <div className="relative h-52 w-full overflow-hidden bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 sm:h-64">
         {getCoverUrl(user.cover_photo) && (
           <img src={getCoverUrl(user.cover_photo)!} alt="" className="h-full w-full object-cover" />
         )}
+        {/* Change Cover button inside cover, bottom-right */}
+        {isOwn && (
+          <label className="absolute bottom-3 right-3 z-30 flex cursor-pointer items-center gap-1.5 rounded-xl bg-black/40 px-3 py-2 text-xs font-bold text-white backdrop-blur-sm hover:bg-black/60 transition-colors">
+            {uploadingPhoto === "cover" ? (
+              <span className="flex items-center gap-1.5">
+                <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                {uploadProgress}%
+              </span>
+            ) : user.cover_photo ? (
+              <><Camera className="h-3.5 w-3.5" />{t("change_cover")}</>
+            ) : (
+              <><ImageIcon className="h-3.5 w-3.5" />{t("add_cover")}</>
+            )}
+            <input type="file" className="hidden" accept="image/*"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePhotoUpload(f, "cover_photo"); }}
+            />
+          </label>
+        )}
       </div>
 
-      {/* Change Cover button — top-right of cover (below transparent header buttons) */}
-      {isOwn && (
-        <label className="absolute right-4 top-16 z-30 flex cursor-pointer items-center gap-1.5 rounded-xl bg-white/90 px-3 py-2 text-xs font-bold text-slate-700 shadow-lg backdrop-blur-sm hover:bg-white transition-colors">
-          {uploadingPhoto === "cover" ? (
-            <span className="flex items-center gap-1.5">
-              <span className="h-3 w-3 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-              {uploadProgress}%
-            </span>
-          ) : user.cover_photo ? (
-            <>
-              <Camera className="h-3.5 w-3.5" />
-              {t("change_cover")}
-            </>
-          ) : (
-            <>
-              <ImageIcon className="h-3.5 w-3.5" />
-              {t("add_cover")}
-            </>
-          )}
-          <input
-            type="file"
-            className="hidden"
-            accept="image/*"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) handlePhotoUpload(f, "cover_photo");
-            }}
-          />
-        </label>
-      )}
-
-      {/* Profile content overlaps ~half into the cover (avatar is centered at the cover/content boundary) */}
-      <div className="relative -mt-24 w-full bg-white dark:bg-slate-950 pb-12 pt-0 sm:-mt-28">
-        <div className="mx-auto w-full max-w-2xl px-4">
-          <div className="relative mx-auto mb-4 flex h-36 w-36 items-center justify-center sm:h-40 sm:w-40">
-             <div className="relative h-full w-full overflow-hidden rounded-full border-[5px] border-white dark:border-slate-900 bg-slate-100 dark:bg-slate-800 shadow-lg">
-               {getAvatarUrl(user.avatar) ? (
-                 <img src={getAvatarUrl(user.avatar)!} alt={user.name} className="h-full w-full object-cover" />
-               ) : (
-                 <div className="flex h-full w-full items-center justify-center bg-slate-100 text-5xl font-black text-slate-300">
-                   {user.name.charAt(0)}
-                 </div>
-               )}
-             </div>
-             {isOwn && (
-               <label className="absolute bottom-1 right-1 flex h-9 w-9 cursor-pointer flex-col items-center justify-center rounded-full bg-white shadow-lg hover:bg-slate-50 transition-colors overflow-hidden">
-                 {uploadingPhoto === "avatar" ? (
-                   <>
-                     <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-                     <span className="text-[7px] font-bold text-blue-600 mt-0.5">{uploadProgress}%</span>
-                   </>
-                 ) : (
-                   <Camera className="h-4 w-4 text-slate-600" />
-                 )}
-                 <input
-                   type="file"
-                   className="hidden"
-                   accept="image/*"
-                   onChange={(e) => {
-                     const f = e.target.files?.[0];
-                     if (f) handlePhotoUpload(f, "avatar");
-                   }}
-                 />
-               </label>
-             )}
+      {/* ── Profile card – full-width, no horizontal padding/margin ── */}
+      <div className="relative w-full bg-white dark:bg-slate-950">
+        {/* Avatar – centred, half overlaps the cover */}
+        <div className="flex flex-col items-center">
+          <div className="relative -mt-16 mb-3 flex h-32 w-32 items-center justify-center sm:h-36 sm:w-36 sm:-mt-[72px]">
+            <div className="relative h-full w-full overflow-hidden rounded-full border-4 border-white dark:border-slate-900 bg-slate-100 dark:bg-slate-800 shadow-xl">
+              {getAvatarUrl(user.avatar) ? (
+                <img src={getAvatarUrl(user.avatar)!} alt={user.name} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-blue-600 to-indigo-700 text-5xl font-black text-white">
+                  {user.name.charAt(0)}
+                </div>
+              )}
+            </div>
+            {isOwn && (
+              <label className="absolute bottom-1 right-1 flex h-9 w-9 cursor-pointer flex-col items-center justify-center rounded-full bg-white shadow-lg hover:bg-slate-50 transition-colors overflow-hidden">
+                {uploadingPhoto === "avatar" ? (
+                  <><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" /><span className="text-[7px] font-bold text-blue-600 mt-0.5">{uploadProgress}%</span></>
+                ) : (
+                  <Camera className="h-4 w-4 text-slate-600" />
+                )}
+                <input type="file" className="hidden" accept="image/*"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePhotoUpload(f, "avatar"); }}
+                />
+              </label>
+            )}
           </div>
 
-          <div className="flex flex-col items-center space-y-2 text-center">
-            <h1 className="text-[22px] font-bold tracking-tight text-slate-900 dark:text-white">
-              {user.name}
-            </h1>
-            <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1 text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
-              {user.role}
-            </span>
+          {/* Name & role */}
+          <h1 className="text-[22px] font-bold tracking-tight text-slate-900 dark:text-white">{user.name}</h1>
+          <span className="mt-1 rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1 text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
+            {user.role}
+          </span>
 
-            <div className="flex items-center justify-center gap-1 py-1 text-[13px] font-semibold text-slate-500 dark:text-slate-400">
-              <span><span className="font-bold text-slate-900 dark:text-white">{stats.followers_count}</span> {t("followers")}</span>
-              <span className="text-slate-300 dark:text-slate-600 px-0.5">•</span>
-              <span><span className="font-bold text-slate-900 dark:text-white">{stats.following_count}</span> {t("following")}</span>
-              <span className="text-slate-300 dark:text-slate-600 px-0.5">•</span>
-              <span><span className="font-bold text-slate-900 dark:text-white">{stats.posts_count}</span> {t("posts")}</span>
-            </div>
-
-            <div className="flex flex-col items-center gap-1.5 pt-2 text-[13px] font-medium text-slate-600 dark:text-slate-400">
+          {/* Public info strip — always visible to everyone */}
+          <div className="mt-3 flex flex-col items-center gap-1.5 text-[13px] font-medium text-slate-500 dark:text-slate-400">
+            {user.purok_address && (
+              <div className="flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5 text-slate-400" />
+                <span>{user.purok_address}, {user.barangays?.name || "Barangay Pagatpatan"}</span>
+              </div>
+            )}
+            {!user.purok_address && (
               <div className="flex items-center gap-1.5">
                 <MapPin className="h-3.5 w-3.5 text-slate-400" />
                 <span>{user.barangays?.name || "Barangay Pagatpatan"}</span>
               </div>
-              {user.email && (
-                <div className="flex items-center gap-1.5">
-                  <Mail className="h-3.5 w-3.5 text-slate-400" />
-                  <span className="text-[12px]">{user.email}</span>
-                </div>
-              )}
-              {user.phone && (
-                <div className="flex items-center gap-1.5">
-                  <Phone className="h-3.5 w-3.5 text-slate-400" />
-                  <span className="text-[13px] font-semibold text-slate-600">{formatPhoneForDisplay(user.phone)}</span>
-                </div>
-              )}
-            </div>
+            )}
+            {/* Email & phone visible only to owner or admin */}
+            {(isOwn || isAdminView) && user.email && (
+              <div className="flex items-center gap-1.5">
+                <Mail className="h-3.5 w-3.5 text-slate-400" />
+                <span className="text-[12px]">{user.email}</span>
+              </div>
+            )}
+            {(isOwn || isAdminView) && user.phone && (
+              <div className="flex items-center gap-1.5">
+                <Phone className="h-3.5 w-3.5 text-slate-400" />
+                <span className="text-[13px] font-semibold text-slate-600 dark:text-slate-300">{formatPhoneForDisplay(user.phone)}</span>
+              </div>
+            )}
+          </div>
 
-            <div className="flex items-center justify-center gap-2 pt-6">
-              {me && !isOwn && (
-                <div className="relative">
-                  {!is_following ? (
-                    <button
-                      onClick={handleFollow}
-                      className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-[13px] font-bold text-white shadow-md transition-all hover:bg-blue-700 active:scale-95"
-                    >
-                      <UserPlus size={16} />
-                      <span>{t("follow")}</span>
+          {/* Action buttons */}
+          <div className="flex items-center justify-center gap-2 py-5 w-full px-4">
+            {me && !isOwn && (
+              <div className="relative">
+                {!is_following ? (
+                  <button onClick={handleFollow} className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-[13px] font-bold text-white shadow-md transition-all hover:bg-blue-700 active:scale-95">
+                    <UserPlus size={16} /><span>{t("follow")}</span>
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => setShowFollowMenu((v) => !v)} className="flex items-center gap-2 rounded-xl bg-slate-100 px-5 py-2.5 text-[13px] font-bold text-slate-700 transition-all hover:bg-slate-200 active:scale-95">
+                      <UserCheck size={16} className="text-blue-600" />
+                      <span>{t("following_btn")}</span>
+                      <ChevronDown size={14} className={`transition-transform ${showFollowMenu ? "rotate-180" : ""}`} />
                     </button>
-                  ) : (
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => setShowFollowMenu((v) => !v)}
-                        className="flex items-center gap-2 rounded-xl bg-slate-100 px-5 py-2.5 text-[13px] font-bold text-slate-700 transition-all hover:bg-slate-200 active:scale-95"
-                      >
-                        <UserCheck size={16} className="text-blue-600" />
-                        <span>{t("following_btn")}</span>
-                        <ChevronDown size={14} className={`transition-transform ${showFollowMenu ? "rotate-180" : ""}`} />
-                      </button>
+                  </div>
+                )}
+                {showFollowMenu && is_following && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setShowFollowMenu(false)} />
+                    <div className="absolute left-0 top-full z-20 mt-2 w-52 overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-200 animate-in fade-in slide-in-from-top-1 duration-150">
+                      <button onClick={() => { handleFollow(); setShowFollowMenu(false); }} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"><UserMinus size={16} /> {t("unfollow")}</button>
+                      <button onClick={() => setShowFollowMenu(false)} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"><BellOff size={16} /> {t("snooze_30")}</button>
+                      <button onClick={() => setShowFollowMenu(false)} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold text-blue-600 hover:bg-blue-50 transition-colors"><BellRing size={16} /> {t("bell_priority")}<span className="ml-auto text-[10px] font-bold uppercase text-blue-400 bg-blue-50 px-2 py-0.5 rounded-full">{t("notify_first")}</span></button>
                     </div>
-                  )}
-
-                  {showFollowMenu && is_following && (
-                    <>
-                      <div className="fixed inset-0 z-10" onClick={() => setShowFollowMenu(false)} />
-                      <div className="absolute left-0 top-full z-20 mt-2 w-52 overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-200 animate-in fade-in slide-in-from-top-1 duration-150">
-                        <button
-                          onClick={() => { handleFollow(); setShowFollowMenu(false); }}
-                          className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"
-                        >
-                          <UserMinus size={16} /> {t("unfollow")}
-                        </button>
-                        <button
-                          onClick={() => setShowFollowMenu(false)}
-                          className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-                        >
-                          <BellOff size={16} /> {t("snooze_30")}
-                        </button>
-                        <button
-                          onClick={() => setShowFollowMenu(false)}
-                          className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold text-blue-600 hover:bg-blue-50 transition-colors"
-                        >
-                          <BellRing size={16} /> {t("bell_priority")}
-                          <span className="ml-auto text-[10px] font-bold uppercase text-blue-400 bg-blue-50 px-2 py-0.5 rounded-full">{t("notify_first")}</span>
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {me && isAdminView && !isOwn && (
-                <button 
-                  onClick={handleSendSms}
-                  disabled={isSendingSms}
-                  className="flex items-center gap-2 rounded-xl bg-[#007AB8] px-5 py-2.5 text-[13px] font-bold text-white transition-all hover:bg-[#006699] active:scale-95 disabled:opacity-50"
-                >
-                  <Send className="h-4 w-4" />
-                  <span>{isSendingSms ? t("sending") : t("send_sms")}</span>
-                </button>
-              )}
-
-              <button 
-                onClick={handleShare}
-                className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 transition-all hover:bg-slate-100 active:scale-90"
-              >
-                <ShareIcon className="h-6 w-6" />
+                  </>
+                )}
+              </div>
+            )}
+            {me && isAdminView && !isOwn && (
+              <button onClick={handleSendSms} disabled={isSendingSms} className="flex items-center gap-2 rounded-xl bg-[#007AB8] px-5 py-2.5 text-[13px] font-bold text-white transition-all hover:bg-[#006699] active:scale-95 disabled:opacity-50">
+                <Send className="h-4 w-4" /><span>{isSendingSms ? t("sending") : t("send_sms")}</span>
               </button>
-            </div>
+            )}
+            <button onClick={handleShare} className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 transition-all hover:bg-slate-100 active:scale-90">
+              <ShareIcon className="h-6 w-6" />
+            </button>
           </div>
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-5xl px-0 sm:px-4 pt-2 pb-8">
+      <div className="w-full pt-0 pb-8">
           <div className="flex items-center justify-around border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-900">
             <button 
               onClick={() => setActiveTab("posts")}
@@ -530,9 +476,9 @@ export default function ProfileView({ userId }: { userId: string }) {
             </button>
           </div>
 
-          <div className="min-h-[400px] pt-6">
+          <div className="min-h-[400px] pt-4">
             {activeTab === "posts" ? (
-              <div className="grid gap-6 py-4">
+              <div className="grid gap-6 py-2">
                 {posts.map((post) => (
                   <div 
                     key={post.id} 
@@ -541,8 +487,12 @@ export default function ProfileView({ userId }: { userId: string }) {
                   >
                     <div className="mb-4 flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#4267B2] font-bold text-white text-xl shadow-sm">
-                            {user.name.charAt(0)}
+                         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#4267B2] font-bold text-white text-xl shadow-sm overflow-hidden">
+                            {getAvatarUrl(user.avatar) ? (
+                              <img src={getAvatarUrl(user.avatar)!} alt={user.name} className="h-full w-full object-cover" />
+                            ) : (
+                              user.name.charAt(0)
+                            )}
                          </div>
                          <div className="flex flex-col leading-tight">
                             <span className="text-[16px] font-bold text-[#385898] hover:underline cursor-pointer">{user.name}</span>
@@ -699,45 +649,118 @@ export default function ProfileView({ userId }: { userId: string }) {
                 )}
               </div>
             ) : (
-              <div className="rounded-[32px] bg-white dark:bg-slate-900 p-6 shadow-sm border border-slate-100 dark:border-slate-700 sm:p-8">
-                <div className="space-y-6">
-                   <div className="flex items-start gap-4">
-                      <div>
-                         <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">{t("purok_address")}</p>
-                         <p className="text-sm font-bold text-slate-900 dark:text-white">{user.purok_address || "None specified"}</p>
+              <div className="mx-4 sm:mx-6 rounded-[24px] bg-white dark:bg-slate-900 p-5 shadow-sm border border-slate-100 dark:border-slate-700">
+                <div className="space-y-5">
+
+                  {/* ── Public info (visible to everyone) ── */}
+                  <div>
+                    <p className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">Public Info</p>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-800">
+                          <MapPin className="h-4 w-4 text-slate-400" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("purok_address")}</p>
+                          <p className="text-sm font-bold text-slate-900 dark:text-white">{user.purok_address || "Not specified"}</p>
+                        </div>
                       </div>
-                   </div>
-                   <div className="flex items-start gap-4">
-                      <div>
-                         <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">{t("barangay")}</p>
-                         <p className="text-sm font-bold text-slate-900 dark:text-white">{user.barangays?.name || "Barangay Pagatpatan"}</p>
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-800">
+                          <MapPin className="h-4 w-4 text-slate-400" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("barangay")}</p>
+                          <p className="text-sm font-bold text-slate-900 dark:text-white">{user.barangays?.name || "Barangay Pagatpatan"}</p>
+                        </div>
                       </div>
-                   </div>
-                   <div className="flex items-start gap-4">
-                      <div>
-                         <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">{t("member_since")}</p>
-                         <p className="text-sm font-bold text-slate-900 dark:text-white">Jan 2025</p>
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-800">
+                          <svg className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("member_since")}</p>
+                          <p className="text-sm font-bold text-slate-900 dark:text-white">
+                            {stats.joined_date ? new Date(stats.joined_date).toLocaleDateString("en-US", { month: "long", year: "numeric" }) : "—"}
+                          </p>
+                        </div>
                       </div>
-                   </div>
-                   <div className="flex items-start gap-4">
-                      <div className="w-full">
-                         <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">{t("profile_link")}</p>
-                         <div className="flex items-center gap-2">
-                           <div className="flex-1 rounded-xl bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-xs text-slate-500 truncate border border-slate-100 dark:border-slate-700">
-                             brgypgt.com/profile/{user.id.substring(0,8)}...
-                           </div>
-                           <button 
-                             onClick={() => {
-                               navigator.clipboard.writeText(`https://brgypgt.com/profile/${user.id}`);
-                               alert("Link copied!");
-                             }}
-                             className="rounded-xl bg-slate-800 px-4 py-2.5 text-xs font-bold text-white hover:bg-slate-700 transition-colors"
-                           >
-                             {t("copy")}
-                           </button>
-                         </div>
+                    </div>
+                  </div>
+
+                  {/* ── Private info (owner or admin only) ── */}
+                  {(isOwn || isAdminView) && (
+                    <>
+                      <div className="border-t border-slate-100 dark:border-slate-700 pt-4">
+                        <p className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Private Info <span className="ml-1 text-[9px] text-slate-300">(only you can see this)</span></p>
+                        <div className="space-y-3">
+                          {user.email && (
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-800">
+                                <Mail className="h-4 w-4 text-slate-400" />
+                              </div>
+                              <div>
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Email</p>
+                                <p className="text-sm font-bold text-slate-900 dark:text-white">{user.email}</p>
+                              </div>
+                            </div>
+                          )}
+                          {user.phone && (
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-800">
+                                <Phone className="h-4 w-4 text-slate-400" />
+                              </div>
+                              <div>
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Phone</p>
+                                <p className="text-sm font-bold text-slate-900 dark:text-white">{formatPhoneForDisplay(user.phone)}</p>
+                              </div>
+                            </div>
+                          )}
+                          {user.sex && (
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-800">
+                                <svg className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                              </div>
+                              <div>
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Sex</p>
+                                <p className="text-sm font-bold text-slate-900 dark:text-white capitalize">{user.sex}</p>
+                              </div>
+                            </div>
+                          )}
+                          {user.birth_date && (
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-800">
+                                <svg className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-1.5-.454M9 6l3-3 3 3M12 3v9" /></svg>
+                              </div>
+                              <div>
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Birthday</p>
+                                <p className="text-sm font-bold text-slate-900 dark:text-white">
+                                  {new Date(user.birth_date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                   </div>
+                    </>
+                  )}
+
+                  {/* ── Profile link (everyone can copy) ── */}
+                  <div className="border-t border-slate-100 dark:border-slate-700 pt-4">
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("profile_link")}</p>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 rounded-xl bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-xs text-slate-500 truncate border border-slate-100 dark:border-slate-700">
+                        brgypgt.com/profile/{user.id.substring(0,8)}…
+                      </div>
+                      <button
+                        onClick={() => { void navigator.clipboard.writeText(`${window.location.origin}/profile/${user.id}`); alert("Link copied!"); }}
+                        className="rounded-xl bg-slate-800 px-4 py-2.5 text-xs font-bold text-white hover:bg-slate-700 transition-colors"
+                      >
+                        {t("copy")}
+                      </button>
+                    </div>
+                  </div>
+
                 </div>
               </div>
             )}
