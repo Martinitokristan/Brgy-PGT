@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabaseServer";
 import { createSupabaseServiceClient } from "@/lib/supabaseService";
+import { getAuthUser } from "@/lib/getUser";
 
 type Params = {
   params: Promise<{
@@ -43,12 +43,11 @@ export async function GET(_request: Request, props: Params) {
 
 // DELETE /api/posts/:id - delete post (admin or owner)
 export async function DELETE(_request: Request, props: Params) {
-  const supabase = await createSupabaseServerClient();
   const service = createSupabaseServiceClient();
   const { id: idStr } = await props.params;
   const id = Number(idStr);
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   // Get current user's profile to check role
@@ -80,12 +79,11 @@ export async function DELETE(_request: Request, props: Params) {
 
 // PATCH /api/posts/:id - update post status/admin_response (admin only)
 export async function PATCH(request: Request, props: Params) {
-  const supabase = await createSupabaseServerClient();
   const service = createSupabaseServiceClient();
   const { id: idStr } = await props.params;
   const id = Number(idStr);
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { data: profile } = await service

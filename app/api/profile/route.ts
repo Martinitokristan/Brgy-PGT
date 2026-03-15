@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabaseServer";
 import { createSupabaseServiceClient } from "@/lib/supabaseService";
+import { getAuthUser } from "@/lib/getUser";
 
 // ─── GET /api/profile?action=me|search&q=... ──────────────────
 export async function GET(request: Request) {
@@ -26,15 +26,10 @@ export async function PATCH(request: Request) {
 // GET ME
 // ═══════════════════════════════════════════════════════════════
 async function handleGetMe() {
-  const supabase = await createSupabaseServerClient();
   const service = createSupabaseServiceClient();
+  const user = await getAuthUser();
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -52,7 +47,7 @@ async function handleGetMe() {
   }
 
   return NextResponse.json(
-    { ...(data ?? {}), email: data?.email ?? user.email },
+    { ...(data ?? {}) },
     { status: 200 }
   );
 }
@@ -64,8 +59,7 @@ async function handleSearch(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = (searchParams.get("q") ?? "").trim();
 
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const service = createSupabaseServiceClient();
@@ -94,12 +88,8 @@ async function handleSearch(request: Request) {
 // UPDATE ME (FormData)
 // ═══════════════════════════════════════════════════════════════
 async function handleUpdateMe(request: Request) {
-  const supabase = await createSupabaseServerClient();
   const supabaseService = createSupabaseServiceClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

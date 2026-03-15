@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabaseServer";
 import { createSupabaseServiceClient } from "@/lib/supabaseService";
+import { getAuthUser } from "@/lib/getUser";
 
 // ─── GET /api/notifications?action=list|unread_count ──────────
 export async function GET(request: Request) {
@@ -38,12 +38,8 @@ export async function POST(request: Request) {
 // LIST NOTIFICATIONS
 // ═══════════════════════════════════════════════════════════════
 async function handleList() {
-  const supabase = await createSupabaseServerClient();
   const service = createSupabaseServiceClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -68,12 +64,8 @@ async function handleList() {
 // UNREAD COUNT
 // ═══════════════════════════════════════════════════════════════
 async function handleUnreadCount() {
-  const supabase = await createSupabaseServerClient();
   const service = createSupabaseServiceClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (!user) {
     return NextResponse.json({ count: 0 }, { status: 200 });
@@ -97,12 +89,8 @@ async function handleUnreadCount() {
 // MARK ALL READ
 // ═══════════════════════════════════════════════════════════════
 async function handleMarkAllRead() {
-  const supabase = await createSupabaseServerClient();
   const service = createSupabaseServiceClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -126,7 +114,6 @@ async function handleMarkAllRead() {
 // MARK ONE READ
 // ═══════════════════════════════════════════════════════════════
 async function handleMarkOneRead(body: any) {
-  const supabase = await createSupabaseServerClient();
   const service = createSupabaseServiceClient();
 
   const id = Number(body?.id);
@@ -134,9 +121,7 @@ async function handleMarkOneRead(body: any) {
     return NextResponse.json({ error: "Invalid id" }, { status: 400 });
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

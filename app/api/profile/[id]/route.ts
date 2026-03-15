@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabaseServer";
 import { createSupabaseServiceClient } from "@/lib/supabaseService";
+import { getAuthUser } from "@/lib/getUser";
 
 type Params = {
   params: Promise<{
@@ -9,12 +9,11 @@ type Params = {
 };
 
 export async function GET(_request: Request, props: Params) {
-  const supabase = await createSupabaseServerClient();
   const service = createSupabaseServiceClient();
   const { id: targetUserId } = await props.params;
 
-  const { data: userData } = await supabase.auth.getUser();
-  const currentUserId = userData.user?.id;
+  const authUser = await getAuthUser();
+  const currentUserId = authUser?.id;
 
   // 1. Fetch Profile info
   const { data: profile, error: profileError } = await service

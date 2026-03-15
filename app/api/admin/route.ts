@@ -1,30 +1,27 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabaseServer";
 import { createSupabaseServiceClient } from "@/lib/supabaseService";
+import { getAuthUser } from "@/lib/getUser";
 import { sendSms } from "@/lib/smsSender";
 
 async function requireAdmin() {
-  const supabase = await createSupabaseServerClient();
+  const service = createSupabaseServiceClient();
+  const authUser = await getAuthUser();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { supabase, user: null, error: "Unauthorized" as const, barangayId: null };
+  if (!authUser) {
+    return { service, user: null, error: "Unauthorized" as const, barangayId: null };
   }
 
-  const { data: profile } = await supabase
+  const { data: profile } = await service
     .from("profiles")
     .select("role, barangay_id")
-    .eq("id", user.id)
+    .eq("id", authUser.id)
     .maybeSingle();
 
   if (!profile || profile.role !== "admin") {
-    return { supabase, user: null, error: "Forbidden" as const, barangayId: null };
+    return { service, user: null, error: "Forbidden" as const, barangayId: null };
   }
 
-  return { supabase, user, error: null, barangayId: profile.barangay_id };
+  return { service, user: authUser, error: null, barangayId: profile.barangay_id };
 }
 
 function adminError(error: "Unauthorized" | "Forbidden") {
@@ -36,18 +33,18 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const action = searchParams.get("action") || "users";
 
-  const { error, user, barangayId, supabase } = await requireAdmin();
+  const { error, user, barangayId, service } = await requireAdmin();
   if (error) return adminError(error);
 
   switch (action) {
     case "users":
       return handleGetUsers();
     case "events":
-      return handleGetEvents(barangayId, supabase);
+      return handleGetEvents(barangayId, service);
     case "sms":
       return handleGetSmsLogs();
     case "stats":
-      return handleGetStats(supabase);
+      return handleGetStats(service);
     default:
       return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });
   }
@@ -55,7 +52,7 @@ export async function GET(request: Request) {
 
 // ─── POST /api/admin  { action: "..." } ───────────────────────
 export async function POST(request: Request) {
-  const { error, user, barangayId, supabase } = await requireAdmin();
+  const { error, user, barangayId, service } = await requireAdmin();
   if (error || !user) return adminError(error || "Unauthorized");
 
   const body = await request.json().catch(() => null);
@@ -351,8 +348,8 @@ async function handleUpdateUser(body: any, adminUser: any) {
 // ═══════════════════════════════════════════════════════════════
 // GET EVENTS (admin)
 // ═══════════════════════════════════════════════════════════════
-async function handleGetEvents(barangayId: number | null, supabase: any) {
-  const { data, error: fetchError } = await supabase
+async function handleGetEvents(barangayId: number | null, service: any) {
+  const { data, error: fetchError } = await service
     .from("events")
     .select("id, title, description, location, event_date, image")
     .eq("barangay_id", barangayId)
@@ -505,12 +502,12 @@ async function handleSendSms(body: any, user: any) {
 // ═══════════════════════════════════════════════════════════════
 // GET STATS
 // ═══════════════════════════════════════════════════════════════
-async function handleGetStats(supabase: any) {
-  const { data: posts } = await supabase
+async function handleGetStats(service: any) {
+  const { data: posts } = await service
     .from("posts")
     .select("id, status, urgency_level, purpose, created_at");
 
-  const { data: profiles } = await supabase
+  const { data: profiles } = await service
     .from("profiles")
     .select("id, role, is_approved, created_at");
 
