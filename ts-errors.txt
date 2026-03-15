@@ -1,2 +1,0 @@
-﻿app/(resident)/layout.tsx(105,58): error TS18047: 'pathname' is possibly 'null'.
-app/(resident)/layout.tsx(171,38): error TS18047: 'pathname' is possibly 'null'.

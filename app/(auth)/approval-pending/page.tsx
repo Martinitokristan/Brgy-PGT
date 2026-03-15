@@ -14,15 +14,15 @@ export default function ApprovalPendingPage() {
     const params = new URLSearchParams(window.location.search);
     if (params.get("verified") === "true") {
       setJustVerified(true);
-      // Clean up the URL
       const newUrl = window.location.pathname;
       window.history.replaceState({ path: newUrl }, "", newUrl);
     }
   }, []);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push("/login");
+    // Try signing out if there's an auth session, but don't fail if there isn't one
+    try { await supabase.auth.signOut(); } catch {}
+    router.push("/");
   };
 
   return (

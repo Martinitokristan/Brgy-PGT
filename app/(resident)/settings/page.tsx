@@ -140,7 +140,7 @@ export default function SettingsPage() {
   async function logoutAll() {
     setLoggingOutAll(true);
     await fetch("/api/auth/logout-all", { method: "POST" }).catch(() => {});
-    router.push("/login");
+    router.push("/");
   }
 
   // ── Delete account ───────────────────────────────────────
@@ -160,7 +160,7 @@ export default function SettingsPage() {
       });
       if (res.ok) {
         setDeleteMsg({ type: "ok", text: "Account deactivated. Recovery instructions have been sent to your email." });
-        setTimeout(() => router.push("/login"), 3000);
+        setTimeout(() => router.push("/"), 3000);
       } else {
         const d = await res.json();
         setDeleteMsg({ type: "err", text: d?.error ?? "Failed to delete account." });
@@ -253,7 +253,7 @@ export default function SettingsPage() {
                   value={value}
                   onChange={(e) => set(e.target.value)}
                   required
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:bg-white focus:outline-none"
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 px-4 py-2.5 text-sm text-slate-900 dark:text-white focus:border-blue-500 focus:bg-white dark:focus:bg-slate-700 focus:outline-none"
                 />
               </div>
             ))}
@@ -262,15 +262,23 @@ export default function SettingsPage() {
               {showPw ? <EyeOff size={13} /> : <Eye size={13} />} {showPw ? "Hide" : "Show"} passwords
             </button>
             {newPw && (
-              <div>
-                <div className="flex h-1.5 gap-1">
-                  {[1,2,3].map((n) => (
-                    <div key={n} className={`flex-1 rounded-full ${pwStrength >= n ? (pwStrength === 1 ? "bg-red-400" : pwStrength === 2 ? "bg-amber-400" : "bg-emerald-500") : "bg-slate-100"}`} />
-                  ))}
+              <div className={`flex items-center gap-2 rounded-xl px-3 py-2 ${
+                pwStrength === 1 ? "bg-red-50 ring-1 ring-red-100" : pwStrength === 2 ? "bg-amber-50 ring-1 ring-amber-100" : "bg-emerald-50 ring-1 ring-emerald-100"
+              }`}>
+                <div className={`flex h-5 w-5 items-center justify-center rounded-full ${
+                  pwStrength === 1 ? "bg-red-500" : pwStrength === 2 ? "bg-amber-500" : "bg-emerald-500"
+                }`}>
+                  {pwStrength >= 3 ? (
+                    <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                  ) : (
+                    <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3m0 3h.01" /></svg>
+                  )}
                 </div>
-                <p className={`mt-0.5 text-[11px] font-bold ${pwStrength === 1 ? "text-red-500" : pwStrength === 2 ? "text-amber-500" : "text-emerald-600"}`}>
-                  {["", "Weak", "Fair", "Strong"][pwStrength]}
-                </p>
+                <span className={`text-[11px] font-bold ${
+                  pwStrength === 1 ? "text-red-600" : pwStrength === 2 ? "text-amber-600" : "text-emerald-600"
+                }`}>
+                  {pwStrength === 1 ? "Weak — Add numbers & special characters" : pwStrength === 2 ? "Fair — Add special characters" : "Strong — Excellent password!"}
+                </span>
               </div>
             )}
             {pwMsg && (
@@ -418,10 +426,10 @@ function Modal({ onClose, title, children }: { onClose: () => void; title: strin
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-sm mx-4 overflow-hidden rounded-t-3xl sm:rounded-3xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-          <h3 className="text-[16px] font-bold text-slate-900">{title}</h3>
-          <button onClick={onClose} className="rounded-full p-1 text-slate-400 hover:bg-slate-100">
+      <div className="relative z-10 w-full max-w-sm mx-4 overflow-hidden rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-900 shadow-2xl">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 px-5 py-4">
+          <h3 className="text-[16px] font-bold text-slate-900 dark:text-white">{title}</h3>
+          <button onClick={onClose} className="rounded-full p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
             <X size={18} />
           </button>
         </div>

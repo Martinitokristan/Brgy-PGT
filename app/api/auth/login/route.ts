@@ -4,7 +4,6 @@ import { createSupabaseServiceClient } from "@/lib/supabaseService";
 import { sendDeviceOtpEmail } from "@/lib/brevoMailer";
 
 export async function POST(request: Request) {
-  const supabase = await createSupabaseServerClient();
   const body = await request.json().catch(() => null);
 
   const email = body?.email as string | undefined;
@@ -17,6 +16,52 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
+
+  const service = createSupabaseServiceClient();
+
+  // ── Check if this email is still in pending_registrations ──
+  // (Account hasn't been created in auth yet — email verified but waiting for admin approval)
+  const { data: pending } = await service
+    .from("pending_registrations")
+    .select("id, email_verified, password_hash")
+    .eq("email", email)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (pending) {
+    // Verify the password matches what they registered with
+    if (pending.password_hash !== password) {
+      return NextResponse.json(
+        { error: "Invalid email or password." },
+        { status: 401 }
+      );
+    }
+
+    if (!pending.email_verified) {
+      return NextResponse.json(
+        {
+          needs_verification: true,
+          redirect_to: `/verify-email?email=${encodeURIComponent(email)}`,
+        },
+        { status: 200 }
+      );
+    }
+
+    // Email verified, pending admin approval — no auth account exists yet
+    return NextResponse.json(
+      {
+        user: null,
+        profile: { is_approved: false },
+        device_trusted: true,
+        pending_approval: true,
+      },
+      { status: 200 }
+    );
+  }
+
+  // ── Normal login: user has a real auth account (admin approved) ──
+  const supabase = await createSupabaseServerClient();
 
   const { data: authData, error: authError } =
     await supabase.auth.signInWithPassword({
@@ -33,10 +78,6 @@ export async function POST(request: Request) {
 
   const user = authData.user;
 
-  // Use service client for profile/device checks so we are not blocked by RLS
-  // on the first login request.
-  const service = createSupabaseServiceClient();
-
   const { data: profile } = await service
     .from("profiles")
     .select(
@@ -45,8 +86,8 @@ export async function POST(request: Request) {
     .eq("id", user.id)
     .maybeSingle();
 
-  // Admins and pending residents do not require device OTP.
-  if (profile?.role === "admin" || profile?.is_approved === false || !deviceToken) {
+  // Admins skip device verification
+  if (profile?.role === "admin" || !deviceToken) {
     return NextResponse.json(
       {
         user,

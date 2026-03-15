@@ -52,7 +52,18 @@ export async function sendSms(to: string, message: string): Promise<SmsResult> {
   }
 
   try {
-    const response = await fetch(endpoint, {
+    // iPROG API expects query params in the URL + JSON body
+    const url = new URL(endpoint);
+    url.searchParams.set("api_token", apiToken);
+    url.searchParams.set("message", message);
+    url.searchParams.set("phone_number", phoneNumber);
+
+    console.log(`[SMS] Sending to ${phoneNumber} via ${url.origin}${url.pathname}`);
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
+    const response = await fetch(url.toString(), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -61,12 +72,14 @@ export async function sendSms(to: string, message: string): Promise<SmsResult> {
         api_token: apiToken,
         phone_number: phoneNumber,
         message,
-        sms_provider: 0,
       }),
+      signal: controller.signal,
     });
 
+    clearTimeout(timeout);
+
     const rawText = await response.text();
-    console.log("SMS Provider Raw Response:", rawText);
+    console.log("[SMS] Provider Raw Response:", rawText);
     let data: Record<string, unknown> = {};
     try {
       data = rawText ? (JSON.parse(rawText) as Record<string, unknown>) : {};
@@ -101,9 +114,22 @@ export async function sendSms(to: string, message: string): Promise<SmsResult> {
       error: errorMessage,
     };
   } catch (e) {
+    const msg = e instanceof Error ? e.message : "Unknown SMS error";
+    console.error(`[SMS] Error sending to ${phoneNumber}:`, msg);
+
+    if (msg.includes("abort") || msg.includes("timeout")) {
+      return { success: false, error: "SMS request timed out. The SMS provider may be unreachable." };
+    }
+    if (msg.includes("fetch failed") || msg.includes("ECONNREFUSED") || msg.includes("ENOTFOUND")) {
+      return { success: false, error: `Cannot reach SMS provider (${msg}). Check IPROG_ENDPOINT in .env.local.` };
+    }
+    if (msg.includes("certificate") || msg.includes("SSL") || msg.includes("CERT")) {
+      return { success: false, error: `SSL/certificate error connecting to SMS provider. Try using http:// instead of https:// in IPROG_ENDPOINT.` };
+    }
+
     return {
       success: false,
-      error: e instanceof Error ? e.message : "Unknown SMS error",
+      error: msg,
     };
   }
 }

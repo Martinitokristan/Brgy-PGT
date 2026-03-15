@@ -74,7 +74,7 @@ function VerifyDeviceForm() {
       return;
     }
 
-    router.push("/login?verified=1");
+    router.push("/");
   }
 
   async function handleResend() {
@@ -178,7 +178,7 @@ function VerifyDeviceForm() {
 
             <button
               type="button"
-              onClick={() => router.push("/login")}
+              onClick={() => router.push("/")}
               className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 transition-colors hover:text-slate-800"
             >
               <ArrowLeft className="h-4 w-4" />

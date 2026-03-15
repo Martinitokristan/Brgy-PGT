@@ -28,7 +28,7 @@ export async function GET() {
   // Fetch all profiles (residents)
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, role, is_approved");
+    .select("id, role, is_approved, created_at");
 
   const allPosts = posts ?? [];
   const allProfiles = profiles ?? [];
@@ -60,6 +60,20 @@ export async function GET() {
     urgencyMap[u] = (urgencyMap[u] ?? 0) + 1;
   }
 
+  // User growth by month (last 6 months)
+  const userGrowth: { month: string; count: number }[] = [];
+  const now = new Date();
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const monthKey = d.toISOString().slice(0, 7); // "YYYY-MM"
+    const label = d.toLocaleDateString("en-US", { month: "short" });
+    const count = allProfiles.filter((p) => {
+      if (!p.created_at) return false;
+      return p.created_at.startsWith(monthKey);
+    }).length;
+    userGrowth.push({ month: label, count });
+  }
+
   return NextResponse.json({
     totalPosts,
     pendingPosts,
@@ -70,5 +84,6 @@ export async function GET() {
     approvedResidents,
     byPurpose: purposeMap,
     byUrgency: urgencyMap,
+    userGrowth,
   });
 }

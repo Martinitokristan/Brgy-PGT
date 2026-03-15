@@ -3,6 +3,7 @@
 import useSWR from "swr";
 import { useState } from "react";
 import { Calendar, MapPin, Clock, Plus, X } from "lucide-react";
+import DateTimePicker from "@/app/components/DateTimePicker";
 
 type Event = {
   id: number;
@@ -347,11 +348,11 @@ export default function AdminEventsPage() {
                 <label className="mb-1.5 block text-xs font-semibold text-slate-600">
                   Date & Time *
                 </label>
-                <input
-                  type="datetime-local"
+                <DateTimePicker
                   value={form.event_date}
-                  onChange={(e) => setForm((f) => ({ ...f, event_date: e.target.value }))}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none"
+                  onChange={(val) => setForm((f) => ({ ...f, event_date: val }))}
+                  placeholder="Select event date & time"
+                  className="rounded-xl"
                 />
               </div>
             </div>

@@ -99,13 +99,13 @@ export default function SearchPage() {
   const showRecent = !showResults && recent.length > 0;
 
   return (
-    <div className="flex flex-col min-h-screen bg-white">
+    <div className="flex flex-col min-h-screen bg-white dark:bg-slate-950">
       {/* Search Header */}
-      <div className="sticky top-0 z-20 bg-white border-b border-slate-100 px-4 pt-3 pb-3">
+      <div className="sticky top-0 z-20 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700 px-4 pt-3 pb-3">
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.back()}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 transition-colors"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
@@ -117,7 +117,7 @@ export default function SearchPage() {
               value={query}
               onChange={handleChange}
               placeholder="Search BarangayPGT..."
-              className="w-full rounded-full bg-slate-100 py-2.5 pl-9 pr-9 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-slate-50 focus:ring-2 focus:ring-blue-500/20 transition-all"
+              className="w-full rounded-full bg-slate-100 dark:bg-slate-800 py-2.5 pl-9 pr-9 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:bg-slate-50 dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500/20 transition-all"
             />
             {query && (
               <button
@@ -163,7 +163,7 @@ export default function SearchPage() {
                 <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100">
                   <UserIcon className="h-7 w-7 text-slate-300" />
                 </div>
-                <p className="text-sm font-semibold text-slate-500">No residents found for &ldquo;{query}&rdquo;</p>
+                <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">No residents found for &ldquo;{query}&rdquo;</p>
               </div>
             ) : (
               <ul className="divide-y divide-slate-50">
@@ -171,7 +171,7 @@ export default function SearchPage() {
                   <li key={user.id}>
                     <button
                       onClick={() => handleVisit(user)}
-                      className="flex w-full items-center gap-3 py-3 text-left transition-colors hover:bg-slate-50 rounded-xl px-2"
+                      className="flex w-full items-center gap-3 py-3 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl px-2"
                     >
                       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-base shadow-sm overflow-hidden">
                         {getAvatarUrl(user.avatar) ? (
@@ -181,7 +181,7 @@ export default function SearchPage() {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="truncate text-sm font-bold text-slate-900">{user.name}</p>
+                        <p className="truncate text-sm font-bold text-slate-900 dark:text-white">{user.name}</p>
                         <p className="text-xs text-slate-400 capitalize">{user.role}</p>
                       </div>
                       <ChevronRight className="h-4 w-4 text-slate-300 shrink-0" />
@@ -197,7 +197,7 @@ export default function SearchPage() {
         {showRecent && (
           <div className="pt-2">
             <div className="mb-2 flex items-center justify-between">
-              <p className="text-[13px] font-bold text-slate-500 uppercase tracking-wider">Recent</p>
+              <p className="text-[13px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Recent</p>
               <button
                 onClick={clearAllRecent}
                 className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors"
@@ -211,13 +211,13 @@ export default function SearchPage() {
                   <div className="flex items-center gap-3 py-2.5">
                     <button
                       onClick={() => handleVisit(user)}
-                      className="flex flex-1 items-center gap-3 text-left rounded-xl px-2 py-1 hover:bg-slate-50 transition-colors"
+                      className="flex flex-1 items-center gap-3 text-left rounded-xl px-2 py-1 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                     >
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-500">
                         <Clock className="h-4 w-4" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="truncate text-sm font-semibold text-slate-800">{user.name}</p>
+                        <p className="truncate text-sm font-semibold text-slate-800 dark:text-white">{user.name}</p>
                         <p className="text-xs text-slate-400 capitalize">{user.role}</p>
                       </div>
                     </button>

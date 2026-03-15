@@ -43,7 +43,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           router.push("/feed");
         }
       } else {
-        router.push("/login");
+        router.push("/");
       }
     }
     void checkRole();
@@ -71,7 +71,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   ];
 
   return (
-    <div className="flex min-h-screen w-full overflow-x-hidden bg-white">
+    <div className="flex min-h-screen w-full overflow-x-hidden bg-white dark:bg-slate-950">
       {/* Sidebar Overlay (Mobile) */}
       {isSidebarOpen && (
         <div 
@@ -143,7 +143,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               </div>
             </div>
             <button 
-              onClick={() => router.push("/login")}
+              onClick={() => router.push("/")}
               className="group flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-slate-400 transition-all hover:text-white"
             >
               <LogOut className="h-5 w-5 text-slate-500 transition-all group-hover:rotate-180 group-hover:text-white" />
@@ -156,7 +156,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       {/* Main Content Area */}
       <div className="flex min-w-0 flex-1 flex-col transition-all lg:pl-72">
         {/* Top Header */}
-        <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-6 lg:px-8 shadow-sm">
+        <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 sm:px-6 lg:px-8 shadow-sm">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setIsSidebarOpen(true)}
@@ -183,7 +183,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 overflow-x-hidden bg-slate-50/50 p-4 lg:p-8">
+        <main className="flex-1 overflow-x-hidden bg-slate-50/50 dark:bg-slate-950 p-4 lg:p-8">
           <div className="mx-auto w-full max-w-7xl">
             {children}
           </div>

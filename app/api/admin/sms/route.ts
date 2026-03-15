@@ -55,7 +55,30 @@ export async function GET() {
     );
   }
 
-  return NextResponse.json(data ?? [], { status: 200 });
+  // Enrich logs with recipient names from profiles
+  const logs = data ?? [];
+  const phones = [...new Set(logs.map((l) => l.recipient_phone).filter(Boolean))];
+  
+  let phoneNameMap: Record<string, string> = {};
+  if (phones.length > 0) {
+    const { data: profiles } = await service
+      .from("profiles")
+      .select("name, phone")
+      .in("phone", phones);
+    
+    if (profiles) {
+      for (const p of profiles) {
+        if (p.phone && p.name) phoneNameMap[p.phone] = p.name;
+      }
+    }
+  }
+
+  const enriched = logs.map((log) => ({
+    ...log,
+    recipient_name: phoneNameMap[log.recipient_phone] ?? null,
+  }));
+
+  return NextResponse.json(enriched, { status: 200 });
 }
 
 // POST /api/admin/sms - send an SMS and log it

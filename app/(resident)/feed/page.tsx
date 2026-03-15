@@ -18,6 +18,7 @@ import Link from "next/link";
 import CommentDrawer from "@/app/components/ui/CommentDrawer";
 import ImageLightbox from "@/app/components/ui/ImageLightbox";
 import { supabase } from "@/lib/supabaseClient";
+import { useT } from "@/lib/useT";
 import { useEffect } from "react";
 
 type Post = {
@@ -30,7 +31,7 @@ type Post = {
   status: string | null;
   created_at: string | null;
   image: string | null;
-  profiles: { name: string } | null;
+  profiles: { name: string; avatar?: string | null } | null;
   reaction_counts: Record<string, number>;
   my_reaction: string | null;
   comment_count: number;
@@ -49,9 +50,11 @@ const ShareIcon = ({ className = "h-5 w-5" }: { className?: string }) => (
 
 export default function FeedPage() {
   const { data: me } = useSWR("/api/profile/me", fetcher);
+  const { t } = useT();
   const { data, error, isLoading, mutate } = useSWR<Post[]>("/api/posts", fetcher);
   const [showingEmojiFor, setShowingEmojiFor] = useState<number | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const feedRef = useRef<HTMLDivElement>(null);
 
   // Comment Drawer State
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -177,6 +180,19 @@ export default function FeedPage() {
 
   const suppressScrollRef = useRef(false);
 
+  // Register non-passive touchmove to allow preventDefault when emoji picker is open
+  useEffect(() => {
+    const el = feedRef.current;
+    if (!el) return;
+    function onTouchMove(e: TouchEvent) {
+      if (suppressScrollRef.current) {
+        e.preventDefault();
+      }
+    }
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    return () => el.removeEventListener("touchmove", onTouchMove);
+  }, []);
+
   function startLongPress(postId: number) {
     suppressScrollRef.current = false;
     longPressTimer.current = setTimeout(() => {
@@ -189,10 +205,9 @@ export default function FeedPage() {
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
   }
 
-  function handleTouchMove(e: React.TouchEvent) {
-    // Prevent page scroll if emoji picker is open or long-press just fired
-    if (suppressScrollRef.current) e.preventDefault();
-    else cancelLongPress(); // finger moved before long-press: cancel
+  function handleTouchMoveReaction() {
+    // finger moved before long-press: cancel
+    if (!suppressScrollRef.current) cancelLongPress();
   }
 
   const handleShare = (postId: number) => {
@@ -216,6 +231,12 @@ export default function FeedPage() {
   const getStorageUrl = (path: string) => {
     if (!path) return null;
     return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/post-images/${path}`;
+  };
+
+  const getAvatarUrl = (path: string | null | undefined) => {
+    if (!path) return null;
+    if (path.startsWith("http")) return path;
+    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${path}`;
   };
 
   return (
@@ -367,18 +388,18 @@ export default function FeedPage() {
       </div>
     )}
 
-    <div className="mx-auto w-full max-w-5xl space-y-6 px-0 sm:px-4">
+    <div ref={feedRef} className="mx-auto w-full max-w-5xl space-y-6 px-0 sm:px-4">
       {/* What's on your mind? Card */}
-      <div className="overflow-hidden rounded-none border-b border-slate-100 bg-white px-4 py-3 sm:rounded-2xl sm:border sm:shadow-sm sm:ring-1 sm:ring-slate-200">
+      <div className="overflow-hidden rounded-none border-b border-slate-100 bg-white dark:bg-slate-900 dark:border-slate-700 px-4 py-3 sm:rounded-2xl sm:border sm:shadow-sm sm:ring-1 sm:ring-slate-200 dark:sm:ring-slate-700">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-700 text-white font-bold text-sm shadow">
             {me?.name?.charAt(0) || "U"}
           </div>
           <button
             onClick={() => setIsExpanding(true)}
-            className="flex-1 rounded-full border border-slate-200 bg-slate-50 px-5 py-2 text-left text-sm text-slate-400 transition-all hover:bg-slate-100"
+            className="flex-1 rounded-full border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 px-5 py-2 text-left text-sm text-slate-400 transition-all hover:bg-slate-100 dark:hover:bg-slate-700"
           >
-            What&apos;s on your mind, {me?.name?.split(" ")[0] || ""}?
+            {t("whats_on_your_mind")}, {me?.name?.split(" ")[0] || ""}?
           </button>
         </div>
       </div>
@@ -387,7 +408,7 @@ export default function FeedPage() {
         {isLoading && (
           <div className="flex flex-col items-center justify-center py-12 text-slate-500">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-            <p className="mt-4 text-sm font-medium">Loading feed...</p>
+            <p className="mt-4 text-sm font-medium">{t("loading_feed")}</p>
           </div>
         )}
 
@@ -408,13 +429,17 @@ export default function FeedPage() {
           {(data ?? []).map((post) => (
             <article
               key={post.id}
-              className="group overflow-hidden rounded-none border-x-0 border-y border-slate-100 bg-white shadow-sm transition-all hover:bg-slate-50/50 sm:rounded-[20px] sm:border"
+              className="group overflow-hidden rounded-none border-x-0 border-y border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm transition-all hover:bg-slate-50/50 dark:hover:bg-slate-800/50 sm:rounded-[20px] sm:border"
             >
               <div className="p-4 pb-4 sm:p-6 sm:pb-4">
                 <div className="mb-4 flex items-start justify-between">
                   <div className="flex gap-4">
-                    <Link href={`/profile/${post.user_id}`} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-bold text-sm shadow-md transition-transform hover:scale-105">
-                      {(post.profiles?.name || "K").charAt(0)}
+                    <Link href={`/profile/${post.user_id}`} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-bold text-sm shadow-md transition-transform hover:scale-105 overflow-hidden">
+                      {post.profiles?.avatar ? (
+                        <img src={getAvatarUrl(post.profiles.avatar)!} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        (post.profiles?.name || "K").charAt(0)
+                      )}
                     </Link>
                     <div>
                       <div className="flex flex-col leading-tight">
@@ -441,6 +466,17 @@ export default function FeedPage() {
                         Resolved
                       </span>
                     )}
+                    {post.status === "in_progress" && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-teal-500 px-3 py-1 text-[10px] font-bold text-white shadow-sm">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        In Progress
+                      </span>
+                    )}
+                    {post.status === "pending" && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-orange-400 px-3 py-1 text-[10px] font-bold text-white shadow-sm">
+                        Pending
+                      </span>
+                    )}
                     <button className="text-slate-300 hover:text-slate-600">
                       <MoreHorizontal className="h-5 w-5" />
                     </button>
@@ -448,28 +484,25 @@ export default function FeedPage() {
                 </div>
 
                 <div className="mb-4 space-y-1">
-                  <h2 className="text-[18px] font-extrabold text-slate-900 leading-tight tracking-tight">
+                  <h2 className="text-[18px] font-extrabold text-slate-900 dark:text-white leading-tight tracking-tight">
                     {post.title || "No Title"}
                   </h2>
-                  <p className="text-[15px] font-medium leading-relaxed text-slate-500/90">
+                  <p className="text-[15px] font-medium leading-relaxed text-slate-500/90 dark:text-slate-400">
                     {post.description}
                   </p>
                 </div>
 
                 {post.image && (
-                  <div className="mb-4 mt-4 overflow-hidden rounded-xl ring-1 ring-slate-100 bg-slate-50">
-                    <button
-                      type="button"
-                      className="block w-full focus:outline-none"
-                      onClick={() => setLightboxSrc(getStorageUrl(post.image!) || "")}
-                    >
-                      <img
-                        src={getStorageUrl(post.image) || ""}
-                        alt={post.title || ""}
-                        className="w-full object-contain"
-                        style={{ maxHeight: "500px" }}
-                      />
-                    </button>
+                  <div
+                    className="mb-4 mt-4 overflow-hidden rounded-xl ring-1 ring-slate-100 dark:ring-slate-600 bg-slate-50 dark:bg-slate-800 cursor-zoom-in"
+                    onDoubleClick={() => setLightboxSrc(getStorageUrl(post.image!) || "")}
+                    onClick={() => setLightboxSrc(getStorageUrl(post.image!) || "")}
+                  >
+                    <img
+                      src={getStorageUrl(post.image) || ""}
+                      alt={post.title || ""}
+                      className="w-full object-contain pointer-events-none"
+                    />
                   </div>
                 )}
               </div>
@@ -478,13 +511,13 @@ export default function FeedPage() {
                 <div className="mx-4 mb-1 flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-2.5 ring-1 ring-emerald-100">
                   <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
                   <div>
-                    <p className="text-[12px] font-bold text-emerald-700">This issue has been resolved</p>
-                    <p className="text-[11px] text-emerald-600/70">The barangay has addressed this concern.</p>
+                    <p className="text-[12px] font-bold text-emerald-700">{t("issue_resolved")}</p>
+                    <p className="text-[11px] text-emerald-600/70">{t("barangay_addressed")}</p>
                   </div>
                 </div>
               )}
 
-              <div className="flex flex-col border-t border-slate-100 px-4 py-2 sm:px-6">
+              <div className="flex flex-col border-t border-slate-100 dark:border-slate-700 px-4 py-2 sm:px-6">
                 {/* Count Row */}
                 <div className="flex justify-end border-b border-slate-50 pb-2 px-1">
                   {post.comment_count > 0 && (
@@ -492,7 +525,7 @@ export default function FeedPage() {
                       onClick={() => openComments(post.id)}
                       className="text-[12px] font-medium text-slate-500 hover:underline"
                     >
-                      {post.comment_count} {post.comment_count === 1 ? 'comment' : 'comments'}
+                      {post.comment_count} {t("comments")}
                     </button>
                   )}
                 </div>
@@ -525,7 +558,7 @@ export default function FeedPage() {
                     onMouseUp={() => { cancelLongPress(); if (showingEmojiFor !== post.id) handleReact(post.id, "like"); }}
                     onMouseLeave={cancelLongPress}
                     onTouchStart={(e) => { e.stopPropagation(); startLongPress(post.id); }}
-                    onTouchMove={handleTouchMove}
+                    onTouchMove={handleTouchMoveReaction}
                     onTouchEnd={(e) => {
                       e.preventDefault();
                       cancelLongPress();
@@ -553,14 +586,14 @@ export default function FeedPage() {
                     className="flex min-w-0 items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-bold text-[#65676B] transition-all hover:bg-slate-50 sm:gap-2 sm:text-[14px]"
                   >
                     <MessageCircle size={18} className="shrink-0" />
-                    <span className="truncate">Comment</span>
+                    <span className="truncate">{t("comment")}</span>
                   </button>
                   <button
                     onClick={() => handleShare(post.id)}
                     className="flex min-w-0 items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-bold text-[#65676B] transition-all hover:bg-slate-50 sm:gap-2 sm:text-[14px]"
                   >
                     <ShareIcon className="h-[18px] w-[18px] shrink-0" />
-                    <span className="truncate">Share</span>
+                    <span className="truncate">{t("share")}</span>
                   </button>
                 </div>
               </div>

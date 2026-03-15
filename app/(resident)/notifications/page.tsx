@@ -2,6 +2,7 @@
 
 import useSWR, { mutate as globalMutate } from "swr";
 import { Bell } from "lucide-react";
+import { useT } from "@/lib/useT";
 
 type Notification = {
   id: number;
@@ -31,22 +32,23 @@ export default function NotificationsPage() {
   }
 
   const unread = (notifications ?? []).filter((n) => !n.is_read);
+  const { t } = useT();
 
   return (
     <div>
       {/* Page Header */}
-      <div className="bg-white px-4 py-4 border-b border-slate-100">
+      <div className="bg-white dark:bg-slate-900 px-4 py-4 border-b border-slate-100 dark:border-slate-700">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Bell className="h-5 w-5 text-slate-800" />
-            <h1 className="text-lg font-bold text-slate-900">Notifications</h1>
+            <Bell className="h-5 w-5 text-slate-800 dark:text-white" />
+            <h1 className="text-lg font-bold text-slate-900 dark:text-white">{t("notifications_page_title")}</h1>
           </div>
           {unread.length > 0 && (
             <button
               onClick={markAllRead}
               className="text-xs font-semibold text-blue-600 hover:underline"
             >
-              Mark all as read
+              {t("mark_all_read")}
             </button>
           )}
         </div>
@@ -66,15 +68,15 @@ export default function NotificationsPage() {
             <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-white shadow-sm">
               <Bell className="h-10 w-10 text-slate-300" />
             </div>
-            <p className="text-base font-bold text-slate-800">You&apos;re all caught up!</p>
-            <p className="mt-1 text-sm text-slate-400">No notifications to show right now.</p>
+            <p className="text-base font-bold text-slate-800 dark:text-white">{t("all_caught_up")}</p>
+            <p className="mt-1 text-sm text-slate-400">{t("no_notifications")}</p>
           </div>
         )}
 
         {(notifications ?? []).map((notif) => (
           <div
             key={notif.id}
-            className={`relative flex items-start gap-3 rounded-2xl bg-white px-4 py-4 shadow-sm transition-all ${
+            className={`relative flex items-start gap-3 rounded-2xl bg-white dark:bg-slate-900 px-4 py-4 shadow-sm transition-all ${
               !notif.is_read ? "border-l-4 border-blue-500" : "border-l-4 border-transparent"
             }`}
           >
@@ -85,7 +87,7 @@ export default function NotificationsPage() {
 
             {/* Content */}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-slate-900 leading-snug line-clamp-2">
+              <p className="text-sm font-semibold text-slate-900 dark:text-white leading-snug line-clamp-2">
                 {notif.message}
               </p>
               <p className="mt-1 text-xs text-slate-400">{formatDate(notif.created_at)}</p>
@@ -97,7 +99,7 @@ export default function NotificationsPage() {
                 href={`/feed`}
                 className="shrink-0 self-center rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-blue-700"
               >
-                View
+                {t("view")}
               </a>
             )}
           </div>

@@ -49,7 +49,7 @@ export default function ResetPasswordPage() {
     }
 
     setDone(true);
-    setTimeout(() => router.push("/login"), 2000);
+    setTimeout(() => router.push("/"), 2000);
   }
 
   if (done) {
@@ -64,7 +64,7 @@ export default function ResetPasswordPage() {
               </div>
             </div>
             <h1 className="mb-3 text-2xl font-extrabold tracking-tight text-slate-900">Password Updated!</h1>
-            <p className="text-sm font-medium text-slate-500">Redirecting you to login…</p>
+            <p className="text-sm font-medium text-slate-500">Redirecting you to sign in…</p>
           </div>
           <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-700" />
         </div>

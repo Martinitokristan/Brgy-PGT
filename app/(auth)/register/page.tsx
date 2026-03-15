@@ -14,6 +14,7 @@ import {
   ChevronRight,
   UserCircle
 } from "lucide-react";
+import DatePicker from "@/app/components/DatePicker";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -45,6 +46,8 @@ export default function RegisterPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState("No file chosen");
   const [deviceToken, setDeviceToken] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
+  const [resendMsg, setResendMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -187,19 +190,42 @@ export default function RegisterPage() {
               Please click the link in your email to verify your account and proceed with registration.
             </p>
             <div className="space-y-4">
-              <a 
-                href="https://mail.google.com" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="inline-flex w-full items-center justify-center rounded-2xl bg-blue-600 px-6 py-4 text-sm font-bold text-white shadow-lg shadow-blue-500/25 transition-all hover:bg-blue-700 active:scale-[0.98]"
-              >
-                Open Gmail
-              </a>
               <button 
-                onClick={() => router.push("/login")}
+                onClick={async () => {
+                  setResending(true);
+                  setResendMsg(null);
+                  try {
+                    const res = await fetch("/api/auth/register/resend", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ email }),
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                      setResendMsg("Verification email resent successfully!");
+                    } else {
+                      setResendMsg(data?.error ?? "Failed to resend email.");
+                    }
+                  } catch {
+                    setResendMsg("Failed to resend email. Please try again.");
+                  }
+                  setResending(false);
+                }}
+                disabled={resending}
+                className="inline-flex w-full items-center justify-center rounded-2xl bg-blue-600 px-6 py-4 text-sm font-bold text-white shadow-lg shadow-blue-500/25 transition-all hover:bg-blue-700 active:scale-[0.98] disabled:opacity-60"
+              >
+                {resending ? "Resending..." : "Resend Verification Email"}
+              </button>
+              {resendMsg && (
+                <p className={`text-sm font-medium ${resendMsg.includes("success") ? "text-emerald-600" : "text-red-500"}`}>
+                  {resendMsg}
+                </p>
+              )}
+              <button 
+                onClick={() => router.push("/")}
                 className="text-sm font-bold text-slate-400 transition-colors hover:text-slate-600"
               >
-                Back to Login
+                Back to Home
               </button>
             </div>
           </div>
@@ -268,12 +294,13 @@ export default function RegisterPage() {
                   <Calendar className="h-3.5 w-3.5 text-blue-600" />
                   Birth Date
                 </label>
-                <input
-                  type="date"
-                  required
+                <DatePicker
                   value={birthDate}
-                  onChange={(e) => setBirthDate(e.target.value)}
-                  className="block w-full rounded-2xl border-0 bg-slate-50 px-4 py-4 text-sm text-slate-900 transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/20 ring-1 ring-slate-200"
+                  onChange={(val) => setBirthDate(val)}
+                  placeholder="Select your birth date"
+                  required
+                  minYear={1920}
+                  maxYear={new Date().getFullYear()}
                 />
               </div>
               <div className="space-y-2.5">
@@ -338,21 +365,29 @@ export default function RegisterPage() {
                   className="block w-full rounded-2xl border-0 bg-slate-50 px-4 py-4 text-sm text-slate-900 transition-all placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/20 ring-1 ring-slate-200"
                   placeholder="Min 8 chars, mix of A-Z & 0-9"
                 />
-                {/* Strength Indicator */}
-                <div className="mt-2 flex gap-1 px-1">
-                  {[1, 2, 3, 4].map((step) => (
-                    <div 
-                      key={step}
-                      className={`h-1 flex-1 rounded-full transition-all duration-500 ${
-                        passwordStrength >= step 
-                          ? step <= 2 ? "bg-red-400" : step === 3 ? "bg-amber-400" : "bg-emerald-500"
-                          : "bg-slate-100"
-                      }`}
-                    />
-                  ))}
-                </div>
-                {!isPasswordSecure && password.length > 0 && (
-                   <p className="mt-1 px-1 text-[10px] font-bold text-red-500">Must have 8+ chars, letters & numbers</p>
+                {/* Professional Strength Indicator */}
+                {password.length > 0 && (
+                  <div className={`mt-2 flex items-center gap-2 rounded-xl px-3 py-2 ${
+                    passwordStrength <= 1 ? "bg-red-50 ring-1 ring-red-100" : passwordStrength <= 2 ? "bg-amber-50 ring-1 ring-amber-100" : passwordStrength === 3 ? "bg-blue-50 ring-1 ring-blue-100" : "bg-emerald-50 ring-1 ring-emerald-100"
+                  }`}>
+                    <div className={`flex h-5 w-5 items-center justify-center rounded-full ${
+                      passwordStrength <= 1 ? "bg-red-500" : passwordStrength <= 2 ? "bg-amber-500" : passwordStrength === 3 ? "bg-blue-500" : "bg-emerald-500"
+                    }`}>
+                      {passwordStrength >= 3 ? (
+                        <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                      ) : (
+                        <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3m0 3h.01" /></svg>
+                      )}
+                    </div>
+                    <span className={`text-[11px] font-bold ${
+                      passwordStrength <= 1 ? "text-red-600" : passwordStrength <= 2 ? "text-amber-600" : passwordStrength === 3 ? "text-blue-600" : "text-emerald-600"
+                    }`}>
+                      {passwordStrength <= 1 ? "Weak — Add numbers & special characters" : passwordStrength <= 2 ? "Fair — Add special characters for better security" : passwordStrength === 3 ? "Good — Almost there!" : "Strong — Excellent password!"}
+                    </span>
+                  </div>
+                )}
+                {!isPasswordSecure && password.length > 0 && passwordStrength <= 1 && (
+                   <p className="mt-1 px-1 text-[10px] font-medium text-slate-400">Min 8 characters with letters & numbers</p>
                 )}
               </div>
               <div className="space-y-2.5">
@@ -411,33 +446,28 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-2.5">
               <label className="flex items-center gap-2 px-1 text-xs font-bold uppercase tracking-wider text-slate-500">
                 <Upload className="h-3.5 w-3.5 text-blue-600" />
                 Upload Valid ID
               </label>
-              <div className="group relative flex cursor-pointer flex-col items-center justify-center rounded-[32px] border-2 border-dashed border-slate-200 bg-slate-50/50 p-8 transition-all hover:border-blue-300 hover:bg-blue-50/30">
+              <div className="group relative flex cursor-pointer items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 transition-all hover:border-blue-300 hover:bg-blue-50/30">
                 <input
                   type="file"
                   accept="image/*"
                   onChange={handleFileChange}
                   className="absolute inset-0 z-10 cursor-pointer opacity-0"
                 />
-                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 transition-transform group-hover:scale-110">
-                  <Upload className="h-6 w-6 text-blue-600" />
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600/10 transition-transform group-hover:scale-105">
+                  <Upload className="h-5 w-5 text-blue-600" />
                 </div>
-                <div className="flex gap-2">
-                  <span className="rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-bold text-white shadow-lg shadow-blue-500/20 group-hover:bg-blue-700">
-                    Choose File
-                  </span>
-                  <span className="py-1.5 text-xs font-medium text-slate-500">
-                    {fileName}
-                  </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-bold text-slate-700">{imageFile ? fileName : "Choose a file"}</p>
+                  <p className="text-[11px] font-medium text-slate-400">Valid ID (Driver's License, Passport, National ID)</p>
                 </div>
-                <p className="mt-4 text-center text-xs font-medium leading-relaxed text-slate-500">
-                  Please upload a clear photo of your valid ID (e.g., Driver&apos;s
-                  License, Passport, National ID). This is required for verification.
-                </p>
+                <span className="shrink-0 rounded-lg bg-blue-600 px-3 py-1.5 text-[11px] font-bold text-white shadow-sm group-hover:bg-blue-700">
+                  Browse
+                </span>
               </div>
             </div>
 
@@ -463,7 +493,7 @@ export default function RegisterPage() {
 
             <p className="text-center text-sm font-medium text-slate-600">
               Already have an account?{" "}
-              <a href="/login" className="font-bold text-blue-600 transition-colors hover:text-blue-700 underline-offset-4 hover:underline">
+              <a href="/" className="font-bold text-blue-600 transition-colors hover:text-blue-700 underline-offset-4 hover:underline">
                 Sign in here
               </a>
             </p>

@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# supabase (contains DB schema and seed with credentials)
+/supabase/
+
+# development debug files
+errors.txt
+ts-errors.txt
+*.log

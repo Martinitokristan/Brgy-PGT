@@ -37,19 +37,19 @@ export default function CreatePostPage() {
     }
 
     if (body?.id) {
-      router.push(`/(resident)/posts/${body.id}`);
+      router.push(`/feed`);
     } else {
-      router.push("/(resident)/feed");
+      router.push("/feed");
     }
   }
 
   return (
     <div className="flex flex-1 flex-col items-center py-4 sm:py-6">
-      <div className="w-full max-w-xl rounded-xl border bg-white p-4 shadow-sm sm:p-6">
-        <h1 className="text-lg font-semibold sm:text-2xl">
+      <div className="w-full max-w-xl rounded-xl border bg-white dark:bg-slate-900 dark:border-slate-700 p-4 shadow-sm sm:p-6">
+        <h1 className="text-lg font-semibold sm:text-2xl dark:text-white">
           Create a new post
         </h1>
-        <p className="mt-2 text-sm text-slate-600">
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
           Share complaints, emergencies, suggestions, or announcements with your
           barangay.
         </p>

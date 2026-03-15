@@ -27,6 +27,7 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import CommentDrawer from "@/app/components/ui/CommentDrawer";
+import { useT } from "@/lib/useT";
 
 type Post = {
   id: number;
@@ -86,6 +87,7 @@ function getCoverUrl(path: string | null | undefined): string | null {
 }
 
 const ShareIcon = ({ className = "h-5 w-5" }: { className?: string }) => (
+
   <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
      <path d="M14 9V5L22 12L14 19V14.9C8.5 14.9 4.7 16.6 2 20.4C3.1 14.9 6.4 9.5 14 9Z" />
   </svg>
@@ -110,6 +112,7 @@ function formatPhoneForDisplay(raw: string | null | undefined) {
 export default function ProfileView({ userId }: { userId: string }) {
   const { data: profile, mutate, isLoading: profileLoading } = useSWR<ProfileData>(userId ? `/api/profile/${userId}` : null, fetcher);
   const { data: me } = useSWR("/api/profile/me", fetcher);
+  const { t } = useT();
   
   useEffect(() => {
     if (!userId) return;
@@ -316,9 +319,9 @@ export default function ProfileView({ userId }: { userId: string }) {
   };
 
   return (
-    <div className="relative flex flex-1 flex-col bg-white min-h-screen overflow-x-hidden">
+    <div className="relative flex flex-1 flex-col bg-white dark:bg-slate-950 min-h-screen overflow-x-hidden">
       {/* Cover area — extends ~half over the profile avatar */}
-      <div className="relative h-60 w-full overflow-hidden bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 sm:h-72">
+      <div className="relative h-72 w-full overflow-hidden bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 sm:h-80">
         {getCoverUrl(user.cover_photo) && (
           <img src={getCoverUrl(user.cover_photo)!} alt="" className="h-full w-full object-cover" />
         )}
@@ -335,12 +338,12 @@ export default function ProfileView({ userId }: { userId: string }) {
           ) : user.cover_photo ? (
             <>
               <Camera className="h-3.5 w-3.5" />
-              Change Cover
+              {t("change_cover")}
             </>
           ) : (
             <>
               <ImageIcon className="h-3.5 w-3.5" />
-              Add Cover Photo
+              {t("add_cover")}
             </>
           )}
           <input
@@ -356,10 +359,10 @@ export default function ProfileView({ userId }: { userId: string }) {
       )}
 
       {/* Profile content overlaps ~half into the cover (avatar is centered at the cover/content boundary) */}
-      <div className="relative -mt-24 w-full bg-white pb-12 pt-0 sm:-mt-28">
+      <div className="relative -mt-24 w-full bg-white dark:bg-slate-950 pb-12 pt-0 sm:-mt-28">
         <div className="mx-auto w-full max-w-2xl px-4">
           <div className="relative mx-auto mb-4 flex h-36 w-36 items-center justify-center sm:h-40 sm:w-40">
-             <div className="relative h-full w-full overflow-hidden rounded-full border-[5px] border-white bg-slate-100 shadow-lg">
+             <div className="relative h-full w-full overflow-hidden rounded-full border-[5px] border-white dark:border-slate-900 bg-slate-100 dark:bg-slate-800 shadow-lg">
                {getAvatarUrl(user.avatar) ? (
                  <img src={getAvatarUrl(user.avatar)!} alt={user.name} className="h-full w-full object-cover" />
                ) : (
@@ -392,22 +395,22 @@ export default function ProfileView({ userId }: { userId: string }) {
           </div>
 
           <div className="flex flex-col items-center space-y-2 text-center">
-            <h1 className="text-[22px] font-bold tracking-tight text-slate-900">
+            <h1 className="text-[22px] font-bold tracking-tight text-slate-900 dark:text-white">
               {user.name}
             </h1>
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-black uppercase tracking-[0.15em] text-slate-500">
+            <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1 text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
               {user.role}
             </span>
 
-            <div className="flex items-center justify-center gap-1 py-1 text-[13px] font-semibold text-slate-500">
-              <span><span className="font-bold text-slate-900">{stats.followers_count}</span> followers</span>
-              <span className="text-slate-300 px-0.5">•</span>
-              <span><span className="font-bold text-slate-900">{stats.following_count}</span> following</span>
-              <span className="text-slate-300 px-0.5">•</span>
-              <span><span className="font-bold text-slate-900">{stats.posts_count}</span> posts</span>
+            <div className="flex items-center justify-center gap-1 py-1 text-[13px] font-semibold text-slate-500 dark:text-slate-400">
+              <span><span className="font-bold text-slate-900 dark:text-white">{stats.followers_count}</span> {t("followers")}</span>
+              <span className="text-slate-300 dark:text-slate-600 px-0.5">•</span>
+              <span><span className="font-bold text-slate-900 dark:text-white">{stats.following_count}</span> {t("following")}</span>
+              <span className="text-slate-300 dark:text-slate-600 px-0.5">•</span>
+              <span><span className="font-bold text-slate-900 dark:text-white">{stats.posts_count}</span> {t("posts")}</span>
             </div>
 
-            <div className="flex flex-col items-center gap-1.5 pt-2 text-[13px] font-medium text-slate-600">
+            <div className="flex flex-col items-center gap-1.5 pt-2 text-[13px] font-medium text-slate-600 dark:text-slate-400">
               <div className="flex items-center gap-1.5">
                 <MapPin className="h-3.5 w-3.5 text-slate-400" />
                 <span>{user.barangays?.name || "Barangay Pagatpatan"}</span>
@@ -435,7 +438,7 @@ export default function ProfileView({ userId }: { userId: string }) {
                       className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-[13px] font-bold text-white shadow-md transition-all hover:bg-blue-700 active:scale-95"
                     >
                       <UserPlus size={16} />
-                      <span>Follow</span>
+                      <span>{t("follow")}</span>
                     </button>
                   ) : (
                     <div className="flex items-center gap-1">
@@ -444,7 +447,7 @@ export default function ProfileView({ userId }: { userId: string }) {
                         className="flex items-center gap-2 rounded-xl bg-slate-100 px-5 py-2.5 text-[13px] font-bold text-slate-700 transition-all hover:bg-slate-200 active:scale-95"
                       >
                         <UserCheck size={16} className="text-blue-600" />
-                        <span>Following</span>
+                        <span>{t("following_btn")}</span>
                         <ChevronDown size={14} className={`transition-transform ${showFollowMenu ? "rotate-180" : ""}`} />
                       </button>
                     </div>
@@ -458,20 +461,20 @@ export default function ProfileView({ userId }: { userId: string }) {
                           onClick={() => { handleFollow(); setShowFollowMenu(false); }}
                           className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"
                         >
-                          <UserMinus size={16} /> Unfollow
+                          <UserMinus size={16} /> {t("unfollow")}
                         </button>
                         <button
                           onClick={() => setShowFollowMenu(false)}
                           className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
                         >
-                          <BellOff size={16} /> Snooze (30 days)
+                          <BellOff size={16} /> {t("snooze_30")}
                         </button>
                         <button
                           onClick={() => setShowFollowMenu(false)}
                           className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold text-blue-600 hover:bg-blue-50 transition-colors"
                         >
-                          <BellRing size={16} /> Bell Priority
-                          <span className="ml-auto text-[10px] font-bold uppercase text-blue-400 bg-blue-50 px-2 py-0.5 rounded-full">Notify First</span>
+                          <BellRing size={16} /> {t("bell_priority")}
+                          <span className="ml-auto text-[10px] font-bold uppercase text-blue-400 bg-blue-50 px-2 py-0.5 rounded-full">{t("notify_first")}</span>
                         </button>
                       </div>
                     </>
@@ -486,7 +489,7 @@ export default function ProfileView({ userId }: { userId: string }) {
                   className="flex items-center gap-2 rounded-xl bg-[#007AB8] px-5 py-2.5 text-[13px] font-bold text-white transition-all hover:bg-[#006699] active:scale-95 disabled:opacity-50"
                 >
                   <Send className="h-4 w-4" />
-                  <span>{isSendingSms ? "Sending..." : "Send SMS"}</span>
+                  <span>{isSendingSms ? t("sending") : t("send_sms")}</span>
                 </button>
               )}
 
@@ -501,15 +504,15 @@ export default function ProfileView({ userId }: { userId: string }) {
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-5xl px-0 sm:px-4 py-8">
-          <div className="flex items-center justify-around border-b border-slate-100 bg-white">
+      <div className="mx-auto w-full max-w-5xl px-0 sm:px-4 pt-2 pb-8">
+          <div className="flex items-center justify-around border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-900">
             <button 
               onClick={() => setActiveTab("posts")}
               className={`relative flex-1 py-4 text-[13px] font-bold uppercase tracking-wider transition-colors ${
                 activeTab === "posts" ? "text-blue-600" : "text-slate-500 hover:text-slate-600"
               }`}
             >
-              Posts
+              {t("posts_tab")}
               {activeTab === "posts" && (
                 <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-1 rounded-full bg-blue-600" />
               )}
@@ -520,7 +523,7 @@ export default function ProfileView({ userId }: { userId: string }) {
                 activeTab === "about" ? "text-blue-600" : "text-slate-500 hover:text-slate-600"
               }`}
             >
-              About
+              {t("about_tab")}
               {activeTab === "about" && (
                 <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-1 rounded-full bg-blue-600" />
               )}
@@ -533,7 +536,7 @@ export default function ProfileView({ userId }: { userId: string }) {
                 {posts.map((post) => (
                   <div 
                     key={post.id} 
-                    className="group relative flex cursor-pointer flex-col rounded-none border-x-0 border-y border-slate-100 bg-white p-4 shadow-sm transition-all hover:bg-slate-50/50 sm:rounded-[20px] sm:border sm:p-5"
+                    className="group relative flex cursor-pointer flex-col rounded-none border-x-0 border-y border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm transition-all hover:bg-slate-50/50 dark:hover:bg-slate-800/50 sm:rounded-[20px] sm:border sm:p-5"
                     onClick={() => openComments(post.id)}
                   >
                     <div className="mb-4 flex items-center justify-between">
@@ -555,13 +558,13 @@ export default function ProfileView({ userId }: { userId: string }) {
                       <div className="relative" onClick={(e) => e.stopPropagation()}>
                         <button 
                           onClick={() => setMenuOpenPostId(menuOpenPostId === post.id ? null : post.id)}
-                          className="rounded-full p-2 hover:bg-slate-100 text-slate-400 transition-colors"
+                          className="rounded-full p-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 transition-colors"
                         >
                           <MoreHorizontal size={20} />
                         </button>
                         
                         {menuOpenPostId === post.id && (
-                          <div className="absolute right-0 top-full z-10 mt-1 w-48 overflow-hidden rounded-xl bg-white shadow-xl ring-1 ring-slate-200 animate-in fade-in slide-in-from-top-2 duration-200">
+                          <div className="absolute right-0 top-full z-10 mt-1 w-48 overflow-hidden rounded-xl bg-white dark:bg-slate-800 shadow-xl ring-1 ring-slate-200 dark:ring-slate-700 animate-in fade-in slide-in-from-top-2 duration-200">
                              {isAdminView && (
                                <>
                                  <button 
@@ -621,15 +624,15 @@ export default function ProfileView({ userId }: { userId: string }) {
                           </div>
                         )}
                       </div>
-                      <h3 className="text-[17px] font-extrabold text-slate-900 leading-tight tracking-tight">{post.title}</h3>
-                      <p className="line-clamp-3 text-[14px] font-medium leading-relaxed text-slate-500/80">
+                      <h3 className="text-[17px] font-extrabold text-slate-900 dark:text-white leading-tight tracking-tight">{post.title}</h3>
+                      <p className="line-clamp-3 text-[14px] font-medium leading-relaxed text-slate-500/80 dark:text-slate-400">
                         {post.description}
                       </p>
                       
                       {post.admin_response && (
-                        <div className="mt-4 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100">
-                          <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-slate-400">Admin Response</p>
-                          <p className="text-[13px] font-medium text-slate-600 italic">"{post.admin_response}"</p>
+                        <div className="mt-4 rounded-2xl bg-slate-50 dark:bg-slate-800 p-4 ring-1 ring-slate-100 dark:ring-slate-700">
+                          <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-slate-400">{t("admin_response")}</p>
+                          <p className="text-[13px] font-medium text-slate-600 dark:text-slate-300 italic">"{post.admin_response}"</p>
                         </div>
                       )}
                     </div>
@@ -637,13 +640,13 @@ export default function ProfileView({ userId }: { userId: string }) {
                     {/* Interaction Section */}
                     <div className="mt-6" onClick={(e) => e.stopPropagation()}>
                       {/* Count Row */}
-                      <div className="flex justify-end border-b border-slate-50 pb-2 px-1">
+                      <div className="flex justify-end border-b border-slate-50 dark:border-slate-700 pb-2 px-1">
                         {post.comment_count > 0 && (
                           <button 
                             onClick={() => openComments(post.id)}
                             className="text-[12px] font-medium text-slate-500 hover:underline"
                           >
-                            {post.comment_count} {post.comment_count === 1 ? 'comment' : 'comments'}
+                            {post.comment_count} {t("comments")}
                           </button>
                         )}
                       </div>
@@ -652,19 +655,19 @@ export default function ProfileView({ userId }: { userId: string }) {
                       <div className="grid grid-cols-3 gap-1 pt-1 sm:gap-2">
                         <button 
                           onClick={() => handleReact(post.id, "like")}
-                          className={`flex min-w-0 items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-bold transition-all hover:bg-slate-50 sm:gap-2 sm:text-[14px] ${
-                            post.my_reaction === "like" ? "text-blue-600" : "text-[#65676B]"
+                          className={`flex min-w-0 items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-bold transition-all hover:bg-slate-50 dark:hover:bg-slate-800 sm:gap-2 sm:text-[14px] ${
+                            post.my_reaction === "like" ? "text-blue-600" : "text-[#65676B] dark:text-slate-400"
                           }`}
                         >
                           <ThumbsUp size={18} className={`shrink-0 ${post.my_reaction === "like" ? "fill-current" : ""}`} />
-                          <span className="truncate">Like</span>
+                          <span className="truncate">{t("like")}</span>
                         </button>
                         <button 
                           onClick={() => openComments(post.id)}
-                          className="flex min-w-0 items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-bold text-[#65676B] transition-all hover:bg-slate-50 sm:gap-2 sm:text-[14px]"
+                          className="flex min-w-0 items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-bold text-[#65676B] dark:text-slate-400 transition-all hover:bg-slate-50 dark:hover:bg-slate-800 sm:gap-2 sm:text-[14px]"
                         >
                           <MessageCircle size={18} className="shrink-0" /> 
-                          <span className="truncate">Comment</span>
+                          <span className="truncate">{t("comment")}</span>
                         </button>
                         <button 
                           onClick={() => {
@@ -676,10 +679,10 @@ export default function ProfileView({ userId }: { userId: string }) {
                               alert("Link copied!");
                             }
                           }}
-                          className="flex min-w-0 items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-bold text-[#65676B] transition-all hover:bg-slate-50 sm:gap-2 sm:text-[14px]"
+                          className="flex min-w-0 items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-bold text-[#65676B] dark:text-slate-400 transition-all hover:bg-slate-50 dark:hover:bg-slate-800 sm:gap-2 sm:text-[14px]"
                         >
                           <ShareIcon className="h-[18px] w-[18px] shrink-0" /> 
-                          <span className="truncate">Share</span>
+                          <span className="truncate">{t("share")}</span>
                         </button>
                       </div>
                     </div>
@@ -687,40 +690,40 @@ export default function ProfileView({ userId }: { userId: string }) {
                 ))}
                 {posts.length === 0 && (
                    <div className="flex flex-col items-center justify-center py-20 text-center">
-                     <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+                     <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
                         <MessageCircle size={24} />
                      </div>
-                     <h4 className="text-lg font-black text-slate-900">No Posts Yet</h4>
-                     <p className="text-sm font-semibold text-slate-500 mt-1">{user.name} hasn't posted anything.</p>
+                     <h4 className="text-lg font-black text-slate-900 dark:text-white">{t("no_posts_title")}</h4>
+                     <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 mt-1">{user.name} {t("no_posts_user")}</p>
                    </div>
                 )}
               </div>
             ) : (
-              <div className="rounded-[32px] bg-white p-6 shadow-sm border border-slate-100 sm:p-8">
+              <div className="rounded-[32px] bg-white dark:bg-slate-900 p-6 shadow-sm border border-slate-100 dark:border-slate-700 sm:p-8">
                 <div className="space-y-6">
                    <div className="flex items-start gap-4">
                       <div>
-                         <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">Purok Address</p>
-                         <p className="text-sm font-bold text-slate-900">{user.purok_address || "None specified"}</p>
+                         <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">{t("purok_address")}</p>
+                         <p className="text-sm font-bold text-slate-900 dark:text-white">{user.purok_address || "None specified"}</p>
                       </div>
                    </div>
                    <div className="flex items-start gap-4">
                       <div>
-                         <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">Barangay</p>
-                         <p className="text-sm font-bold text-slate-900">{user.barangays?.name || "Barangay Pagatpatan"}</p>
+                         <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">{t("barangay")}</p>
+                         <p className="text-sm font-bold text-slate-900 dark:text-white">{user.barangays?.name || "Barangay Pagatpatan"}</p>
                       </div>
                    </div>
                    <div className="flex items-start gap-4">
                       <div>
-                         <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">Member Since</p>
-                         <p className="text-sm font-bold text-slate-900">Jan 2025</p>
+                         <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">{t("member_since")}</p>
+                         <p className="text-sm font-bold text-slate-900 dark:text-white">Jan 2025</p>
                       </div>
                    </div>
                    <div className="flex items-start gap-4">
                       <div className="w-full">
-                         <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Profile Link</p>
+                         <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">{t("profile_link")}</p>
                          <div className="flex items-center gap-2">
-                           <div className="flex-1 rounded-xl bg-slate-50 px-3 py-2.5 text-xs text-slate-500 truncate border border-slate-100">
+                           <div className="flex-1 rounded-xl bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-xs text-slate-500 truncate border border-slate-100 dark:border-slate-700">
                              brgypgt.com/profile/{user.id.substring(0,8)}...
                            </div>
                            <button 
@@ -730,7 +733,7 @@ export default function ProfileView({ userId }: { userId: string }) {
                              }}
                              className="rounded-xl bg-slate-800 px-4 py-2.5 text-xs font-bold text-white hover:bg-slate-700 transition-colors"
                            >
-                             Copy
+                             {t("copy")}
                            </button>
                          </div>
                       </div>

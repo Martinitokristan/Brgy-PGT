@@ -8,6 +8,7 @@ type SmsLog = {
   id: number;
   admin_id: string | null;
   recipient_phone: string;
+  recipient_name: string | null;
   message_content: string;
   status: string;
   provider_message_id: string | null;
@@ -177,7 +178,12 @@ export default function AdminSmsPage() {
                   <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
                     Recipient
                   </p>
-                  <p className="text-sm font-semibold text-slate-800">{log.recipient_phone}</p>
+                  <p className="text-sm font-semibold text-slate-800">
+                    {log.recipient_name && (
+                      <span className="text-slate-900">{log.recipient_name} — </span>
+                    )}
+                    {log.recipient_phone}
+                  </p>
                 </div>
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">

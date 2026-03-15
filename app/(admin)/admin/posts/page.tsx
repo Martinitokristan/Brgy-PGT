@@ -199,7 +199,7 @@ export default function AdminPostsPage() {
 
                 {/* View Button */}
                 <a
-                  href={`/feed`}
+                  href={`/admin/feed#post-${post.id}`}
                   className="ml-auto rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700"
                 >
                   View

@@ -24,7 +24,103 @@ type Stats = {
   approvedResidents: number;
   byPurpose: Record<string, number>;
   byUrgency: Record<string, number>;
+  userGrowth: { month: string; count: number }[];
 };
+
+/* Auto-scale Y-axis: pick a nice ceiling from the tier list */
+function niceMax(maxVal: number): number {
+  const tiers = [5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000];
+  for (const t of tiers) if (maxVal <= t) return t;
+  return Math.ceil(maxVal / 10000) * 10000;
+}
+
+function formatAxisLabel(n: number): string {
+  if (n >= 1000) return `${n / 1000}k`;
+  return n.toString();
+}
+
+/* Smooth area chart component */
+function AreaChart({
+  data,
+  color = "#10b981",
+  gradientId,
+  height = 180,
+}: {
+  data: { label: string; value: number }[];
+  color?: string;
+  gradientId: string;
+  height?: number;
+}) {
+  if (data.length === 0) return <p className="text-xs text-slate-400">No data</p>;
+  const rawMax = Math.max(...data.map((d) => d.value), 1);
+  const yMax = niceMax(rawMax);
+  const W = 500;
+  const H = height;
+  const padL = 45;
+  const padR = 15;
+  const padT = 15;
+  const padB = 30;
+  const chartW = W - padL - padR;
+  const chartH = H - padT - padB;
+
+  const points = data.map((d, i) => ({
+    x: padL + (data.length === 1 ? chartW / 2 : (i / (data.length - 1)) * chartW),
+    y: padT + chartH - (d.value / yMax) * chartH,
+  }));
+
+  // Build smooth curve
+  let linePath = `M ${points[0].x} ${points[0].y}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const cp1x = points[i].x + (points[i + 1].x - points[i].x) / 3;
+    const cp1y = points[i].y;
+    const cp2x = points[i + 1].x - (points[i + 1].x - points[i].x) / 3;
+    const cp2y = points[i + 1].y;
+    linePath += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${points[i + 1].x} ${points[i + 1].y}`;
+  }
+
+  const areaPath = linePath + ` L ${points[points.length - 1].x} ${padT + chartH} L ${points[0].x} ${padT + chartH} Z`;
+
+  // Y-axis gridlines (4 steps)
+  const ySteps = 4;
+  const yLines = Array.from({ length: ySteps + 1 }, (_, i) => {
+    const val = (yMax / ySteps) * i;
+    const y = padT + chartH - (val / yMax) * chartH;
+    return { val, y };
+  });
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+          <stop offset="100%" stopColor={color} stopOpacity="0.02" />
+        </linearGradient>
+      </defs>
+      {/* Grid lines + Y labels */}
+      {yLines.map((yl, i) => (
+        <g key={i}>
+          <line x1={padL} y1={yl.y} x2={W - padR} y2={yl.y} stroke="#e2e8f0" strokeWidth="0.8" strokeDasharray={i === 0 ? "0" : "4 3"} />
+          <text x={padL - 8} y={yl.y + 3.5} textAnchor="end" fontSize="10" fill="#94a3b8" fontWeight="600">
+            {formatAxisLabel(Math.round(yl.val))}
+          </text>
+        </g>
+      ))}
+      {/* Area fill */}
+      <path d={areaPath} fill={`url(#${gradientId})`} />
+      {/* Line */}
+      <path d={linePath} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Dots + X labels */}
+      {points.map((p, i) => (
+        <g key={i}>
+          <circle cx={p.x} cy={p.y} r="4" fill="white" stroke={color} strokeWidth="2.5" />
+          <text x={p.x} y={H - 8} textAnchor="middle" fontSize="10" fill="#64748b" fontWeight="600">
+            {data[i].label}
+          </text>
+        </g>
+      ))}
+    </svg>
+  );
+}
 
 const COLORS = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"];
 
@@ -108,42 +204,60 @@ export default function AdminDashboardPage() {
       value: stats?.totalPosts ?? 0,
       icon: FileText,
       color: "border-t-blue-500",
-      valueColor: "text-slate-900",
+      bg: "bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/40 dark:to-slate-900",
+      valueColor: "text-blue-700 dark:text-blue-400",
+      iconBg: "bg-blue-100 dark:bg-blue-900/50",
+      iconColor: "text-blue-600",
     },
     {
       label: "ACTIVE URGENT",
       value: stats?.urgentPosts ?? 0,
       icon: AlertTriangle,
       color: "border-t-red-500",
-      valueColor: "text-red-500",
+      bg: "bg-gradient-to-br from-red-50 to-white dark:from-red-950/40 dark:to-slate-900",
+      valueColor: "text-red-600 dark:text-red-400",
+      iconBg: "bg-red-100 dark:bg-red-900/50",
+      iconColor: "text-red-500",
     },
     {
       label: "PENDING",
       value: stats?.pendingPosts ?? 0,
       icon: Clock,
       color: "border-t-orange-500",
-      valueColor: "text-orange-500",
+      bg: "bg-gradient-to-br from-orange-50 to-white dark:from-orange-950/40 dark:to-slate-900",
+      valueColor: "text-orange-600 dark:text-orange-400",
+      iconBg: "bg-orange-100 dark:bg-orange-900/50",
+      iconColor: "text-orange-500",
     },
     {
       label: "IN PROGRESS",
       value: stats?.inProgressPosts ?? 0,
       icon: Activity,
       color: "border-t-teal-500",
-      valueColor: "text-teal-500",
+      bg: "bg-gradient-to-br from-teal-50 to-white dark:from-teal-950/40 dark:to-slate-900",
+      valueColor: "text-teal-600 dark:text-teal-400",
+      iconBg: "bg-teal-100 dark:bg-teal-900/50",
+      iconColor: "text-teal-500",
     },
     {
       label: "RESOLVED",
       value: stats?.resolvedPosts ?? 0,
       icon: CheckCircle2,
       color: "border-t-green-500",
-      valueColor: "text-green-500",
+      bg: "bg-gradient-to-br from-green-50 to-white dark:from-green-950/40 dark:to-slate-900",
+      valueColor: "text-green-600 dark:text-green-400",
+      iconBg: "bg-green-100 dark:bg-green-900/50",
+      iconColor: "text-green-500",
     },
     {
       label: "RESIDENTS",
       value: stats?.totalResidents ?? 0,
       icon: Users,
-      color: "border-t-blue-600",
-      valueColor: "text-blue-600",
+      color: "border-t-indigo-500",
+      bg: "bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/40 dark:to-slate-900",
+      valueColor: "text-indigo-600 dark:text-indigo-400",
+      iconBg: "bg-indigo-100 dark:bg-indigo-900/50",
+      iconColor: "text-indigo-500",
     },
   ];
 
@@ -166,7 +280,7 @@ export default function AdminDashboardPage() {
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 shadow-md shadow-blue-500/30">
           <Activity className="h-5 w-5 text-white" />
         </div>
-        <h1 className="text-xl font-black text-slate-900">Admin Dashboard</h1>
+        <h1 className="text-xl font-black text-slate-900 dark:text-white">Admin Dashboard</h1>
       </div>
 
       {/* Action Buttons */}
@@ -194,15 +308,17 @@ export default function AdminDashboardPage() {
           return (
             <div
               key={card.label}
-              className={`flex flex-col items-center justify-center gap-1 rounded-2xl border-t-4 bg-white px-4 py-5 shadow-sm text-center ${card.color}`}
+              className={`flex flex-col gap-3 rounded-2xl border-t-4 ${card.bg} px-4 py-5 shadow-sm ${card.color}`}
             >
-              <Icon className="h-4 w-4 text-slate-400 mb-1" />
+              <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${card.iconBg}`}>
+                <Icon className={`h-4.5 w-4.5 ${card.iconColor}`} />
+              </div>
               {isLoading ? (
-                <div className="h-8 w-12 animate-pulse rounded-lg bg-slate-100" />
+                <div className="h-8 w-16 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
               ) : (
                 <p className={`text-3xl font-black ${card.valueColor}`}>{card.value}</p>
               )}
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{card.label}</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">{card.label}</p>
             </div>
           );
         })}
@@ -211,79 +327,78 @@ export default function AdminDashboardPage() {
       {/* Charts Row */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {/* Posts by Purpose */}
-        <div className="rounded-2xl bg-white p-5 shadow-sm">
-          <p className="mb-4 text-sm font-bold text-slate-800">Posts by Purpose</p>
+        <div className="rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+          <p className="mb-4 text-sm font-bold text-slate-800 dark:text-white">Posts by Purpose</p>
           <div className="flex items-center gap-5">
             <DonutChart data={byPurposeData} size={110} />
-            <div className="flex flex-col gap-2 min-w-0">
-              {byPurposeData.map((d) => (
-                <div key={d.label} className="flex items-center gap-2 min-w-0">
-                  <div
-                    className="h-2.5 w-2.5 shrink-0 rounded-full"
-                    style={{ background: d.color }}
-                  />
-                  <span className="truncate text-[11px] font-semibold text-slate-600">
-                    {d.label}
-                  </span>
-                  <span className="ml-auto text-[11px] font-black text-slate-800">{d.value}</span>
-                </div>
-              ))}
-              {byPurposeData.length === 0 && (
-                <p className="text-xs text-slate-400">No posts yet</p>
-              )}
+            <div className="flex flex-col gap-2.5 min-w-0 flex-1">
+              {byPurposeData.map((d) => {
+                const total = byPurposeData.reduce((s, x) => s + x.value, 0);
+                const pct = total > 0 ? Math.round((d.value / total) * 100) : 0;
+                return (
+                  <div key={d.label} className="flex items-center gap-2 min-w-0">
+                    <div className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: d.color }} />
+                    <span className="truncate text-[11px] font-semibold text-slate-600 dark:text-slate-400 capitalize">{d.label}</span>
+                    <span className="ml-auto text-[11px] font-black text-slate-800 dark:text-white">{d.value} <span className="font-medium text-slate-400">({pct}%)</span></span>
+                  </div>
+                );
+              })}
+              {byPurposeData.length === 0 && <p className="text-xs text-slate-400">No posts yet</p>}
             </div>
           </div>
         </div>
 
         {/* Posts by Urgency */}
-        <div className="rounded-2xl bg-white p-5 shadow-sm">
-          <p className="mb-4 text-sm font-bold text-slate-800">Posts by Urgency</p>
+        <div className="rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+          <p className="mb-4 text-sm font-bold text-slate-800 dark:text-white">Posts by Urgency</p>
           <div className="flex items-center gap-5">
             <DonutChart data={byUrgencyData} size={110} />
-            <div className="flex flex-col gap-2 min-w-0">
-              {byUrgencyData.map((d) => (
-                <div key={d.label} className="flex items-center gap-2 min-w-0">
-                  <div
-                    className="h-2.5 w-2.5 shrink-0 rounded-full"
-                    style={{ background: d.color }}
-                  />
-                  <span className="truncate text-[11px] font-semibold text-slate-600 capitalize">
-                    {d.label}
-                  </span>
-                  <span className="ml-auto text-[11px] font-black text-slate-800">{d.value}</span>
-                </div>
-              ))}
-              {byUrgencyData.length === 0 && (
-                <p className="text-xs text-slate-400">No posts yet</p>
-              )}
+            <div className="flex flex-col gap-2.5 min-w-0 flex-1">
+              {byUrgencyData.map((d) => {
+                const total = byUrgencyData.reduce((s, x) => s + x.value, 0);
+                const pct = total > 0 ? Math.round((d.value / total) * 100) : 0;
+                return (
+                  <div key={d.label} className="flex items-center gap-2 min-w-0">
+                    <div className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: d.color }} />
+                    <span className="truncate text-[11px] font-semibold text-slate-600 dark:text-slate-400 capitalize">{d.label}</span>
+                    <span className="ml-auto text-[11px] font-black text-slate-800 dark:text-white">{d.value} <span className="font-medium text-slate-400">({pct}%)</span></span>
+                  </div>
+                );
+              })}
+              {byUrgencyData.length === 0 && <p className="text-xs text-slate-400">No posts yet</p>}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Status Overview */}
-      <div className="rounded-2xl bg-white p-5 shadow-sm">
-        <p className="mb-4 text-sm font-bold text-slate-800">Status Overview</p>
-        <div className="flex flex-col gap-3">
-          {[
-            { label: "Pending", value: stats?.pendingPosts ?? 0, color: "bg-orange-500", pct: stats?.totalPosts ? ((stats.pendingPosts / stats.totalPosts) * 100) : 0 },
-            { label: "In Progress", value: stats?.inProgressPosts ?? 0, color: "bg-teal-500", pct: stats?.totalPosts ? ((stats.inProgressPosts / stats.totalPosts) * 100) : 0 },
-            { label: "Resolved", value: stats?.resolvedPosts ?? 0, color: "bg-green-500", pct: stats?.totalPosts ? ((stats.resolvedPosts / stats.totalPosts) * 100) : 0 },
-          ].map((row) => (
-            <div key={row.label}>
-              <div className="mb-1 flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-600">{row.label}</span>
-                <span className="text-xs font-bold text-slate-800">{row.value}</span>
-              </div>
-              <div className="h-2 w-full rounded-full bg-slate-100">
-                <div
-                  className={`h-2 rounded-full transition-all duration-500 ${row.color}`}
-                  style={{ width: `${Math.min(row.pct, 100)}%` }}
-                />
-              </div>
-            </div>
-          ))}
+      {/* Status Overview — Area Chart */}
+      <div className="rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+        <p className="mb-2 text-sm font-bold text-slate-800 dark:text-white">Status Overview</p>
+        <AreaChart
+          data={[
+            { label: "Resolved", value: stats?.resolvedPosts ?? 0 },
+            { label: "In Progress", value: stats?.inProgressPosts ?? 0 },
+            { label: "Pending", value: stats?.pendingPosts ?? 0 },
+          ]}
+          color="#10b981"
+          gradientId="statusGrad"
+        />
+      </div>
+
+      {/* Users Growth — Area Chart (Blue) */}
+      <div className="rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+        <div className="mb-2 flex items-center justify-between">
+          <p className="text-sm font-bold text-slate-800 dark:text-white">Users Growth</p>
+          <div className="flex items-center gap-1.5 rounded-full bg-blue-50 dark:bg-blue-900/30 px-3 py-1">
+            <Users className="h-3.5 w-3.5 text-blue-600" />
+            <span className="text-[11px] font-bold text-blue-600">{stats?.totalResidents ?? 0} total</span>
+          </div>
         </div>
+        <AreaChart
+          data={(stats?.userGrowth ?? []).slice().reverse().map((g) => ({ label: g.month, value: g.count }))}
+          color="#2563eb"
+          gradientId="usersGrad"
+        />
       </div>
     </div>
   );

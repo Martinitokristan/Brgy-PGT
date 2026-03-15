@@ -32,6 +32,56 @@ export async function POST(request: Request) {
     );
   }
 
+  // Check if email already exists in auth users (approved accounts)
+  const { data: existingUsers } = await supabase.auth.admin.listUsers();
+  const emailTaken = existingUsers?.users?.some((u) => u.email === email);
+  if (emailTaken) {
+    return NextResponse.json(
+      { error: "This email is already registered. Please sign in instead." },
+      { status: 409 }
+    );
+  }
+
+  // Check if email already has a pending registration
+  const { data: pendingEmail } = await supabase
+    .from("pending_registrations")
+    .select("id")
+    .eq("email", email)
+    .maybeSingle();
+  if (pendingEmail) {
+    return NextResponse.json(
+      { error: "A registration with this email is already pending. Check your Gmail for the verification link, or try signing in." },
+      { status: 409 }
+    );
+  }
+
+  // Check if phone number is already used by an approved account
+  if (phone) {
+    const { data: phoneTaken } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("phone", phone)
+      .maybeSingle();
+    if (phoneTaken) {
+      return NextResponse.json(
+        { error: "This phone number is already registered to another account." },
+        { status: 409 }
+      );
+    }
+
+    const { data: pendingPhone } = await supabase
+      .from("pending_registrations")
+      .select("id")
+      .eq("phone", phone)
+      .maybeSingle();
+    if (pendingPhone) {
+      return NextResponse.json(
+        { error: "This phone number is already used in a pending registration." },
+        { status: 409 }
+      );
+    }
+  }
+
   // Upload file if exists
   let validIdPath = null;
   if (validIdFile && validIdFile.size > 0) {
@@ -61,7 +111,7 @@ export async function POST(request: Request) {
   } catch (e) {
     token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
   }
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 minutes
 
   const defaultBarangayId = process.env.DEFAULT_BARANGAY_ID
     ? Number(process.env.DEFAULT_BARANGAY_ID)

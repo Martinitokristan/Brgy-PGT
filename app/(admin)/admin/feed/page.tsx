@@ -338,6 +338,7 @@ export default function AdminFeedPage() {
           {(data ?? []).map((post) => (
             <article
               key={post.id}
+              id={`post-${post.id}`}
               className="group overflow-hidden rounded-none border-x-0 border-y border-slate-100 bg-white shadow-sm transition-all hover:bg-slate-50/50 sm:rounded-[20px] sm:border"
             >
               <div className="p-4 pb-4 sm:p-6 sm:pb-4">
@@ -390,7 +391,7 @@ export default function AdminFeedPage() {
                     <img 
                       src={getStorageUrl(post.image) || ""} 
                       alt={post.title || ""} 
-                      className="w-full object-cover max-h-[450px]"
+                      className="w-full object-contain"
                     />
                   </div>
                 )}

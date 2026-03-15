@@ -39,7 +39,7 @@ export default function SecurityPage() {
   async function handleLogoutAll() {
     setLoggingOut(true);
     await fetch("/api/auth/logout-all", { method: "POST" }).catch(() => {});
-    router.push("/login");
+    router.push("/");
   }
 
   const pwStrength = newPw.length === 0 ? 0 : newPw.length < 6 ? 1 : newPw.length < 10 ? 2 : 3;
@@ -47,16 +47,16 @@ export default function SecurityPage() {
   const pwStrengthColor = ["", "bg-red-400", "bg-amber-400", "bg-emerald-500"][pwStrength];
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <div className="mx-auto max-w-lg pb-16">
         {/* Header */}
-        <div className="border-b border-slate-200 bg-white px-5 py-5">
+        <div className="border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-5">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600">
               <ShieldCheck className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h1 className="text-[20px] font-bold text-slate-900">Security</h1>
+              <h1 className="text-[20px] font-bold text-slate-900 dark:text-white">Security</h1>
               <p className="text-[12px] text-slate-400">Protect your BarangayPGT account</p>
             </div>
           </div>
@@ -64,10 +64,10 @@ export default function SecurityPage() {
 
         <div className="space-y-4 px-4 pt-4">
           {/* Change Password */}
-          <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
-            <div className="flex items-center gap-3 border-b border-slate-50 px-4 py-3">
+          <div className="overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-sm ring-1 ring-slate-100 dark:ring-slate-700">
+            <div className="flex items-center gap-3 border-b border-slate-50 dark:border-slate-700 px-4 py-3">
               <Lock className="h-4 w-4 text-blue-600" />
-              <p className="text-[13px] font-bold text-slate-700">Change Password</p>
+              <p className="text-[13px] font-bold text-slate-700 dark:text-slate-200">Change Password</p>
             </div>
             <form onSubmit={handleChangePassword} className="space-y-4 px-4 py-4">
               {[
@@ -81,7 +81,7 @@ export default function SecurityPage() {
                     type={showPw ? "text" : "password"}
                     value={value}
                     onChange={(e) => set(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:bg-white"
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 px-4 py-2.5 text-sm text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:bg-white dark:focus:bg-slate-700"
                     required
                   />
                 </div>
@@ -127,13 +127,13 @@ export default function SecurityPage() {
           </div>
 
           {/* Active Sessions */}
-          <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
-            <div className="flex items-center gap-3 border-b border-slate-50 px-4 py-3">
+          <div className="overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-sm ring-1 ring-slate-100 dark:ring-slate-700">
+            <div className="flex items-center gap-3 border-b border-slate-50 dark:border-slate-700 px-4 py-3">
               <MonitorX className="h-4 w-4 text-red-500" />
-              <p className="text-[13px] font-bold text-slate-700">Active Sessions</p>
+              <p className="text-[13px] font-bold text-slate-700 dark:text-slate-200">Active Sessions</p>
             </div>
             <div className="px-4 py-4">
-              <p className="mb-3 text-[13px] text-slate-500 leading-relaxed">
+              <p className="mb-3 text-[13px] text-slate-500 dark:text-slate-400 leading-relaxed">
                 If you think someone else has access to your account, you can immediately log out of all devices including this one.
               </p>
               {!showLogoutConfirm ? (

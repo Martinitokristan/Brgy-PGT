@@ -13,7 +13,7 @@ export async function GET() {
     .from("posts")
     .select(`
       *,
-      profiles(name),
+      profiles(name, avatar),
       reactions(type, user_id),
       comments(id)
     `)

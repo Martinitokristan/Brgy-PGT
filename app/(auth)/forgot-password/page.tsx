@@ -51,7 +51,7 @@ export default function ForgotPasswordPage() {
               <p className="text-xs font-semibold text-slate-500">The link expires in 60 minutes.</p>
             </div>
             <a
-              href="/login"
+              href="/"
               className="mt-8 inline-flex items-center gap-2 text-sm font-bold text-slate-400 transition-colors hover:text-slate-700"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -112,7 +112,7 @@ export default function ForgotPasswordPage() {
             )}
 
             <a
-              href="/login"
+              href="/"
               className="flex items-center justify-center gap-2 text-sm font-bold text-slate-400 transition-colors hover:text-slate-700"
             >
               <ArrowLeft className="h-4 w-4" />

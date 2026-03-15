@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
+import { rateLimit } from "@/lib/rateLimit";
 
 export async function POST(request: Request) {
   const supabase = await createSupabaseServerClient();
@@ -11,6 +12,16 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: "Email is required." },
       { status: 400 }
+    );
+  }
+
+  // Rate limit: max 3 reset requests per email per 15 minutes
+  const rl = rateLimit(`forgot-pw:${email.toLowerCase()}`, 3, 15 * 60 * 1000);
+  if (rl.limited) {
+    const mins = Math.ceil(rl.retryAfterMs / 60000);
+    return NextResponse.json(
+      { error: `Too many requests. Please try again in ${mins} minute${mins > 1 ? "s" : ""}.` },
+      { status: 429 }
     );
   }
 
