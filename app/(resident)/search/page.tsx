@@ -60,7 +60,7 @@ export default function SearchPage() {
     if (!q.trim()) { setResults([]); return; }
     setLoading(true);
     try {
-      const res = await fetch(`/api/users/search?q=${encodeURIComponent(q)}`);
+      const res = await fetch(`/api/profile?action=search&q=${encodeURIComponent(q)}`);
       const data = await res.json();
       setResults(Array.isArray(data) ? data : []);
     } catch { setResults([]); }

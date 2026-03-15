@@ -18,7 +18,7 @@ function VerifyEmailContent() {
 
     const intervalId = setInterval(async () => {
       try {
-        const res = await fetch(`/api/auth/register/status?email=${encodeURIComponent(email)}`);
+        const res = await fetch(`/api/auth/register?action=status&email=${encodeURIComponent(email)}`);
         const data = await res.json();
         if (data.verified) {
           clearInterval(intervalId);
@@ -38,10 +38,10 @@ function VerifyEmailContent() {
     setResending(true);
     setResendMsg(null);
     try {
-      const res = await fetch("/api/auth/register/resend", {
+      const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ action: "resend", email }),
       });
       const data = await res.json();
       if (res.ok) {

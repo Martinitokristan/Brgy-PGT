@@ -57,10 +57,10 @@ export default function PostDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params?.id;
   
-  const { data: me } = useSWR("/api/profile/me", fetcher);
+  const { data: me } = useSWR("/api/profile?action=me", fetcher);
   const { data: post, error: postError, isLoading: postLoading } = useSWR<Post>(id ? `/api/posts/${id}` : null, fetcher);
-  const { data: comments, mutate: mutateComments } = useSWR<Comment[]>(id ? `/api/posts/${id}/comments` : null, fetcher);
-  const { data: reactions, mutate: mutateReactions } = useSWR<ReactionSummary>(id ? `/api/posts/${id}/reactions` : null, fetcher);
+  const { data: comments, mutate: mutateComments } = useSWR<Comment[]>(id ? `/api/posts/${id}?action=comments` : null, fetcher);
+  const { data: reactions, mutate: mutateReactions } = useSWR<ReactionSummary>(id ? `/api/posts/${id}?action=reactions` : null, fetcher);
 
   const [newComment, setNewComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -83,10 +83,11 @@ export default function PostDetailPage() {
 
     setIsSubmitting(true);
     try {
-      const res = await fetch(`/api/posts/${id}/comments`, {
+      const res = await fetch(`/api/posts/${id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
+          action: "comment",
           body: newComment.trim(),
           parent_id: replyTarget?.id ?? null 
         }),
@@ -117,15 +118,15 @@ export default function PostDetailPage() {
   };
 
   const handleLikeComment = async (commentId: number) => {
-    await fetch(`/api/posts/${id}/comments/${commentId}/like`, { method: "POST" });
+    await fetch(`/api/posts/${id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "comment_like", comment_id: commentId }) });
     mutateComments();
   };
 
   const handleReact = async (type: string) => {
-    await fetch(`/api/posts/${id}/reactions`, {
+    await fetch(`/api/posts/${id}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type }),
+      body: JSON.stringify({ action: "reaction", type }),
     });
     mutateReactions();
   };

@@ -49,7 +49,7 @@ const ShareIcon = ({ className = "h-5 w-5" }: { className?: string }) => (
 );
 
 export default function FeedPage() {
-  const { data: me } = useSWR("/api/profile/me", fetcher);
+  const { data: me } = useSWR("/api/profile?action=me", fetcher);
   const { t } = useT();
   const { data, error, isLoading, mutate } = useSWR<Post[]>("/api/posts", fetcher);
   const [showingEmojiFor, setShowingEmojiFor] = useState<number | null>(null);
@@ -161,10 +161,10 @@ export default function FeedPage() {
   
   const handleReact = useCallback(async (postId: number, type: string) => {
     setShowingEmojiFor(null);
-    await fetch(`/api/posts/${postId}/reactions`, {
+    await fetch(`/api/posts/${postId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type }),
+      body: JSON.stringify({ action: "reaction", type }),
     });
     void mutate();
   }, [mutate]);

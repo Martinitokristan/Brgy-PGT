@@ -13,7 +13,7 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function MyProfileRedirectPage() {
   const router = useRouter();
-  const { data: profile, isLoading } = useSWR<Profile>("/api/profile/me", fetcher);
+  const { data: profile, isLoading } = useSWR<Profile>("/api/profile?action=me", fetcher);
 
   useEffect(() => {
     if (profile?.id) {

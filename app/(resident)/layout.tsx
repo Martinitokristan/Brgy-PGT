@@ -34,7 +34,7 @@ export default function ResidentLayout({ children }: { children: ReactNode }) {
   const [showSecurityMenu, setShowSecurityMenu] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
-  const { data: me } = useSWR("/api/profile/me", fetcher);
+  const { data: me } = useSWR("/api/profile?action=me", fetcher);
 
   // Language support
   const [lang, setLang] = useState("en");
@@ -50,7 +50,7 @@ export default function ResidentLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     async function checkRole() {
-      const res = await fetch("/api/profile/me");
+      const res = await fetch("/api/profile?action=me");
       if (res.ok) {
         const data = await res.json();
         if (data.role === "admin") {
@@ -90,7 +90,7 @@ export default function ResidentLayout({ children }: { children: ReactNode }) {
   const avatarLetter = me?.name?.charAt(0)?.toUpperCase() || "R";
 
   async function handleLogout() {
-    await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "logout" }) }).catch(() => {});
     router.push("/");
   }
 
@@ -216,7 +216,7 @@ export default function ResidentLayout({ children }: { children: ReactNode }) {
                 <div className="mx-2 mt-1 overflow-hidden rounded-xl bg-slate-50 dark:bg-slate-800 ring-1 ring-slate-100 dark:ring-slate-700">
                   <button
                     onClick={async () => {
-                      await fetch("/api/auth/logout-all", { method: "POST" }).catch(() => {});
+                      await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "logout_all" }) }).catch(() => {});
                       router.push("/");
                     }}
                     className="flex w-full items-center gap-3 px-4 py-3 text-[13px] font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"

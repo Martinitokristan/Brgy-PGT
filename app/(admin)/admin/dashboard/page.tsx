@@ -194,7 +194,7 @@ function DonutChart({
 }
 
 export default function AdminDashboardPage() {
-  const { data: stats, isLoading } = useSWR<Stats>("/api/admin/stats", fetcher, {
+  const { data: stats, isLoading } = useSWR<Stats>("/api/admin?action=stats", fetcher, {
     refreshInterval: 30000,
   });
 

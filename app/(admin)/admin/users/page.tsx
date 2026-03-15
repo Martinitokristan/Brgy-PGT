@@ -61,7 +61,7 @@ function formatPhoneForDisplay(raw: string | null | undefined) {
 }
 
 export default function AdminUsersPage() {
-  const { data, isLoading, mutate } = useSWR<UserProfile[]>("/api/admin/users", fetcher);
+  const { data, isLoading, mutate } = useSWR<UserProfile[]>("/api/admin?action=users", fetcher);
 
   const [filterRole, setFilterRole] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -86,10 +86,10 @@ export default function AdminUsersPage() {
 
   async function toggleApproval(user: UserProfile) {
     setUpdating(user.id);
-    await fetch("/api/admin/users", {
+    await fetch("/api/admin", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: user.id, is_approved: !user.is_approved }),
+      body: JSON.stringify({ action: "update_user", id: user.id, is_approved: !user.is_approved }),
     });
     await mutate();
     setUpdating(null);
@@ -97,10 +97,10 @@ export default function AdminUsersPage() {
 
   async function toggleRole(user: UserProfile, newRole: string) {
     setUpdating(user.id);
-    await fetch("/api/admin/users", {
+    await fetch("/api/admin", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: user.id, role: newRole }),
+      body: JSON.stringify({ action: "update_user", id: user.id, role: newRole }),
     });
     await mutate();
     setUpdating(null);

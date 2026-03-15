@@ -86,7 +86,7 @@ function useLang() {
 }
 
 export default function SettingsPage() {
-  const { data: me } = useSWR("/api/profile/me", fetcher);
+  const { data: me } = useSWR("/api/profile?action=me", fetcher);
   const router = useRouter();
   const { dark, toggle: toggleDark } = useDarkMode();
   const { push, togglePush, email, toggleEmail } = useNotifPrefs();
@@ -117,10 +117,10 @@ export default function SettingsPage() {
     if (newPw.length < 8) { setPwMsg({ type: "err", text: "Minimum 8 characters required." }); return; }
     setSavingPw(true);
     try {
-      const res = await fetch("/api/auth/password/change", {
+      const res = await fetch("/api/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ newPassword: newPw }),
+        body: JSON.stringify({ action: "password_change", newPassword: newPw }),
       });
       const d = await res.json();
       if (res.ok) {
@@ -139,7 +139,7 @@ export default function SettingsPage() {
 
   async function logoutAll() {
     setLoggingOutAll(true);
-    await fetch("/api/auth/logout-all", { method: "POST" }).catch(() => {});
+    await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "logout_all" }) }).catch(() => {});
     router.push("/");
   }
 
@@ -153,10 +153,10 @@ export default function SettingsPage() {
     e.preventDefault();
     setDeletingAccount(true);
     try {
-      const res = await fetch("/api/auth/delete-account", {
+      const res = await fetch("/api/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason: deleteReason }),
+        body: JSON.stringify({ action: "delete_account", reason: deleteReason }),
       });
       if (res.ok) {
         setDeleteMsg({ type: "ok", text: "Account deactivated. Recovery instructions have been sent to your email." });

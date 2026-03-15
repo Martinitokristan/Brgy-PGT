@@ -31,7 +31,7 @@ function formatDateTime(d: string | null) {
 }
 
 export default function AdminSmsPage() {
-  const { data, error, isLoading, mutate } = useSWR<SmsLog[]>("/api/admin/sms", fetcher);
+  const { data, error, isLoading, mutate } = useSWR<SmsLog[]>("/api/admin?action=sms", fetcher);
 
   const [to, setTo] = useState("");
   const [message, setMessage] = useState("");
@@ -45,10 +45,10 @@ export default function AdminSmsPage() {
     setSendError(null);
     setSendOk(null);
 
-    const res = await fetch("/api/admin/sms", {
+    const res = await fetch("/api/admin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ to, message }),
+      body: JSON.stringify({ action: "sms", to, message }),
     });
 
     const body = await res.json().catch(() => null);

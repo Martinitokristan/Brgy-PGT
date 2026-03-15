@@ -111,7 +111,7 @@ function formatPhoneForDisplay(raw: string | null | undefined) {
 
 export default function ProfileView({ userId }: { userId: string }) {
   const { data: profile, mutate, isLoading: profileLoading } = useSWR<ProfileData>(userId ? `/api/profile/${userId}` : null, fetcher);
-  const { data: me } = useSWR("/api/profile/me", fetcher);
+  const { data: me } = useSWR("/api/profile?action=me", fetcher);
   const { t } = useT();
   
   useEffect(() => {
@@ -184,7 +184,7 @@ export default function ProfileView({ userId }: { userId: string }) {
     fd.append(type, file);
 
     const xhr = new XMLHttpRequest();
-    xhr.open("PATCH", "/api/profile/me");
+    xhr.open("PATCH", "/api/profile");
     xhr.upload.onprogress = (ev) => {
       if (ev.lengthComputable) setUploadProgress(Math.round((ev.loaded / ev.total) * 100));
     };
@@ -211,7 +211,7 @@ export default function ProfileView({ userId }: { userId: string }) {
 
   const handleFollow = async () => {
     if (isOwn) return;
-    await fetch(`/api/profile/${userId}/follow`, { method: "POST" });
+    await fetch(`/api/profile/${userId}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "follow" }) });
     mutate();
   };
 
@@ -232,10 +232,10 @@ export default function ProfileView({ userId }: { userId: string }) {
 
     setIsSendingSms(true);
     try {
-      const res = await fetch("/api/admin/sms", {
+      const res = await fetch("/api/admin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to: user.phone, message }),
+        body: JSON.stringify({ action: "sms", to: user.phone, message }),
       });
       if (res.ok) alert("SMS sent successfully!");
       else alert("Failed to send SMS.");
@@ -251,10 +251,10 @@ export default function ProfileView({ userId }: { userId: string }) {
 
   const handleReact = async (postId: number, type: string) => {
     try {
-      await fetch(`/api/posts/${postId}/reactions`, {
+      await fetch(`/api/posts/${postId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type }),
+        body: JSON.stringify({ action: "reaction", type }),
       });
       mutate();
     } catch (err) {
@@ -269,10 +269,10 @@ export default function ProfileView({ userId }: { userId: string }) {
 
     setIsSuspending(true);
     try {
-      const res = await fetch("/api/admin/users", {
+      const res = await fetch("/api/admin", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: user.id, is_approved: false }),
+        body: JSON.stringify({ action: "update_user", id: user.id, is_approved: false }),
       });
       if (res.ok) alert("User has been suspended.");
       else alert("Failed to suspend user.");

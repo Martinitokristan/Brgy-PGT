@@ -9,7 +9,7 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function PendingApprovalPage() {
   const router = useRouter();
-  const { data: me, mutate } = useSWR("/api/profile/me", fetcher, {
+  const { data: me, mutate } = useSWR("/api/profile?action=me", fetcher, {
     refreshInterval: 5000, // Poll every 5 seconds
   });
 
@@ -21,7 +21,7 @@ export default function PendingApprovalPage() {
   }, [me, router]);
 
   const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
+    await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "logout" }) });
     router.push("/");
   };
 

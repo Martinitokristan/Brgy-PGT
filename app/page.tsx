@@ -50,10 +50,10 @@ export default function LandingPage() {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
-    const res = await fetch("/api/auth/login", {
+    const res = await fetch("/api/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, device_token: deviceToken }),
+      body: JSON.stringify({ action: "login", email, password, device_token: deviceToken }),
     });
     if (!res.ok) {
       const body = await res.json().catch(() => null);

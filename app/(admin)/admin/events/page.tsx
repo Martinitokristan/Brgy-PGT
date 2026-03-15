@@ -51,7 +51,7 @@ function formatDateLong(d: string) {
 const EMPTY_FORM: EventForm = { title: "", description: "", location: "", event_date: "" };
 
 export default function AdminEventsPage() {
-  const { data: events, isLoading, mutate } = useSWR<Event[]>("/api/admin/events", fetcher);
+  const { data: events, isLoading, mutate } = useSWR<Event[]>("/api/admin?action=events", fetcher);
 
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -84,20 +84,20 @@ export default function AdminEventsPage() {
     setSaving(true);
     try {
       if (editEvent) {
-        const res = await fetch("/api/admin/events", {
+        const res = await fetch("/api/admin", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: editEvent.id, ...form }),
+          body: JSON.stringify({ action: "update_event", id: editEvent.id, ...form }),
         });
         if (!res.ok) {
           const body = await res.json();
           throw new Error(body.error || "Failed to update event");
         }
       } else {
-        const res = await fetch("/api/admin/events", {
+        const res = await fetch("/api/admin", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
+          body: JSON.stringify({ action: "create_event", ...form }),
         });
         if (!res.ok) {
           const body = await res.json();
@@ -116,7 +116,7 @@ export default function AdminEventsPage() {
   async function handleDelete(id: number) {
     if (!confirm("Delete this event?")) return;
     setDeleting(id);
-    await fetch(`/api/admin/events?id=${id}`, { method: "DELETE" });
+    await fetch(`/api/admin?action=event&id=${id}`, { method: "DELETE" });
     await mutate();
     setDeleting(null);
     if (selectedEvent?.id === id) setSelectedEvent(null);

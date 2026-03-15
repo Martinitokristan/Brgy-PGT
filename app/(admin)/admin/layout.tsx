@@ -28,15 +28,15 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const { data: me } = useSWR("/api/profile/me", fetcher);
-  const { data: notifData } = useSWR("/api/notifications/unread-count", countFetcher, {
+  const { data: me } = useSWR("/api/profile?action=me", fetcher);
+  const { data: notifData } = useSWR("/api/notifications?action=unread_count", countFetcher, {
     refreshInterval: 15000, // poll every 15 seconds for real-time feel
   });
   const unreadCount: number = notifData?.count ?? 0;
 
   useEffect(() => {
     async function checkRole() {
-      const res = await fetch("/api/profile/me");
+      const res = await fetch("/api/profile?action=me");
       if (res.ok) {
         const data = await res.json();
         if (data.role !== "admin") {

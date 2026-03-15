@@ -30,7 +30,7 @@ interface CommentDrawerProps {
 
 export default function CommentDrawer({ postId, isOpen, onClose, me }: CommentDrawerProps) {
   const { data: comments, mutate } = useSWR<Comment[]>(
-    postId ? `/api/posts/${postId}/comments` : null,
+    postId ? `/api/posts/${postId}?action=comments` : null,
     fetcher
   );
 
@@ -76,10 +76,10 @@ export default function CommentDrawer({ postId, isOpen, onClose, me }: CommentDr
     try {
       const body: Record<string, any> = { body: newComment.trim() };
       if (replyingTo) body.parent_id = replyingTo.id;
-      const res = await fetch(`/api/posts/${postId}/comments`, {
+      const res = await fetch(`/api/posts/${postId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ action: "comment", ...body }),
       });
       if (res.ok) {
         setNewComment("");
@@ -97,7 +97,7 @@ export default function CommentDrawer({ postId, isOpen, onClose, me }: CommentDr
 
   async function handleLikeComment(commentId: number) {
     if (!postId) return;
-    await fetch(`/api/posts/${postId}/comments/${commentId}/like`, { method: "POST" });
+    await fetch(`/api/posts/${postId}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "comment_like", comment_id: commentId }) });
     mutate();
   }
 

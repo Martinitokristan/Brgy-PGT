@@ -14,10 +14,10 @@ export default function ForgotPasswordPage() {
     setSubmitting(true);
     setError(null);
 
-    const res = await fetch("/api/auth/password/forgot", {
+    const res = await fetch("/api/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ action: "password_forgot", email }),
     });
 
     const body = await res.json().catch(() => null);

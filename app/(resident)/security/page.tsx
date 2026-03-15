@@ -21,10 +21,10 @@ export default function SecurityPage() {
     if (newPw.length < 8) { setPwMsg({ type: "error", text: "Password must be at least 8 characters." }); return; }
     setChanging(true);
     try {
-      const res = await fetch("/api/auth/password/change", {
+      const res = await fetch("/api/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword: currentPw, newPassword: newPw }),
+        body: JSON.stringify({ action: "password_change", currentPassword: currentPw, newPassword: newPw }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -38,7 +38,7 @@ export default function SecurityPage() {
 
   async function handleLogoutAll() {
     setLoggingOut(true);
-    await fetch("/api/auth/logout-all", { method: "POST" }).catch(() => {});
+    await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "logout_all" }) }).catch(() => {});
     router.push("/");
   }
 

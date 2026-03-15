@@ -60,10 +60,10 @@ function VerifyDeviceForm() {
     setSubmitting(true);
     setError(null);
 
-    const res = await fetch("/api/auth/device/verify", {
+    const res = await fetch("/api/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, code, device_token: deviceToken }),
+      body: JSON.stringify({ action: "device_verify", email, code, device_token: deviceToken }),
     });
 
     const body = await res.json().catch(() => null);
@@ -81,10 +81,10 @@ function VerifyDeviceForm() {
     setResending(true);
     setResendMsg(null);
     setError(null);
-    const res = await fetch("/api/auth/device/resend", {
+    const res = await fetch("/api/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, device_token: deviceToken }),
+      body: JSON.stringify({ action: "device_resend", email, device_token: deviceToken }),
     });
     const body = await res.json().catch(() => null);
     setResending(false);
