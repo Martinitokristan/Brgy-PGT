@@ -27,16 +27,19 @@ export async function GET(_request: Request, props: Params) {
   }
 
   // 1.5 Privacy Check: Residents/Riders cannot view Admin profiles
-  if (profile.role === "admin" && currentUserId !== targetUserId) {
-    // Check if the current user is also an admin
-    const { data: currentUserProfile } = await service
-      .from("profiles")
-      .select("role")
-      .eq("id", currentUserId)
-      .single();
+  // Allow: admin viewing their own profile, OR another admin viewing an admin profile
+  if (profile.role === "admin") {
+    const isSelf = currentUserId === targetUserId;
+    if (!isSelf) {
+      const { data: currentUserProfile } = await service
+        .from("profiles")
+        .select("role")
+        .eq("id", currentUserId ?? "")
+        .maybeSingle();
 
-    if (currentUserProfile?.role !== "admin") {
-      return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+      if (currentUserProfile?.role !== "admin") {
+        return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+      }
     }
   }
 
@@ -58,18 +61,18 @@ export async function GET(_request: Request, props: Params) {
     isFollowing = (count ?? 0) > 0;
   }
 
-  // 4. Fetch User Posts (latest 10)
+  // 4. Fetch User Posts (latest 20) — use service client so RLS doesn't block
   const { data: posts } = await service
     .from("posts")
     .select(`
-      *,
-      profiles(name),
+      id, title, description, purpose, urgency_level, status,
+      created_at, admin_response, image, user_id,
       reactions(type, user_id),
       comments(id)
     `)
     .eq("user_id", targetUserId)
     .order("created_at", { ascending: false })
-    .limit(10);
+    .limit(20);
 
   // Transform posts to include counts
   const transformedPosts = (posts ?? []).map((post: any) => {
@@ -101,10 +104,7 @@ export async function GET(_request: Request, props: Params) {
       posts_count: postsCount.count ?? 0,
       followers_count: followersCount.count ?? 0,
       following_count: followingCount.count ?? 0,
-      joined_date: new Date(profile.created_at).toLocaleDateString("en-US", {
-        month: "long",
-        year: "numeric"
-      })
+      joined_date: profile.created_at,
     },
     posts: transformedPosts,
     is_following: isFollowing

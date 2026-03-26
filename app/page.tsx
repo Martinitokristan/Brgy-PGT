@@ -33,7 +33,12 @@ export default function LandingPage() {
     if (typeof window === "undefined") return;
     let token = window.localStorage.getItem("device_token");
     if (!token) {
-      token = self.crypto.randomUUID();
+      token = (typeof self.crypto?.randomUUID === "function")
+        ? self.crypto.randomUUID()
+        : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+          const r = (Math.random() * 16) | 0;
+          return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+        });
       window.localStorage.setItem("device_token", token);
     }
     setDeviceToken(token);
@@ -70,7 +75,8 @@ export default function LandingPage() {
       return;
     }
     if (body?.pending_approval) {
-      router.push("/approval-pending");
+      // In the new flow users are auto-approved on email verification, redirect to feed
+      router.push("/feed");
       setSubmitting(false);
       return;
     }
@@ -80,7 +86,6 @@ export default function LandingPage() {
       return;
     }
     if (profile?.role === "admin") router.push("/admin/dashboard");
-    else if (profile?.is_approved === false) router.push("/approval-pending");
     else router.push("/feed");
     setSubmitting(false);
   }
@@ -235,7 +240,7 @@ export default function LandingPage() {
             {testimonials.map((t) => (
               <div key={t.name} className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
                 <div className="mb-3 flex items-center gap-1">
-                  {[1,2,3,4,5].map((n) => <Star key={n} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />)}
+                  {[1, 2, 3, 4, 5].map((n) => <Star key={n} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />)}
                 </div>
                 <p className="text-[14px] italic leading-relaxed text-slate-600">&ldquo;{t.text}&rdquo;</p>
                 <div className="mt-3 flex items-center gap-2">

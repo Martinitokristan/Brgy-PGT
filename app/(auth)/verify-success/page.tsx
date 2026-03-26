@@ -1,12 +1,29 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
-import { CheckCircle2, XCircle } from "lucide-react";
-import { Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { Suspense, useEffect, useState } from "react";
 
 function VerifySuccessContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const error = searchParams.get("error");
+  const [countdown, setCountdown] = useState(3);
+
+  useEffect(() => {
+    if (error) return;
+    // Count down then redirect to feed
+    const interval = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          router.push("/feed");
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [error, router]);
 
   if (error) {
     return (
@@ -49,16 +66,19 @@ function VerifySuccessContent() {
           </div>
 
           <h1 className="mb-3 text-3xl font-extrabold tracking-tight text-slate-900">
-            Email Successfully Verified
+            Email Verified! 🎉
           </h1>
-          <p className="mx-auto mb-8 max-w-xs text-base font-medium leading-relaxed text-slate-500">
-            Your email has been confirmed successfully. You can now close this tab and return to the registration page.
+          <p className="mx-auto mb-6 max-w-xs text-base font-medium leading-relaxed text-slate-500">
+            Your email has been confirmed. Redirecting you to your feed in a moment...
           </p>
 
-          <div className="rounded-2xl bg-emerald-50 p-4 ring-1 ring-emerald-100">
-            <p className="text-sm font-semibold text-emerald-700">
-              You may safely close this tab now.
-            </p>
+          <div className="rounded-2xl bg-emerald-50 p-5 ring-1 ring-emerald-100">
+            <div className="flex items-center justify-center gap-3">
+              <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
+              <p className="text-sm font-bold text-emerald-700">
+                Redirecting to feed in {countdown}s...
+              </p>
+            </div>
           </div>
         </div>
         <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-600 to-emerald-700" />

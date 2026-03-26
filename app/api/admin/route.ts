@@ -118,7 +118,7 @@ async function handleGetUsers() {
   const { data: profiles, error: profilesError } = await service
     .from("profiles")
     .select(
-      "id, name, email, role, is_approved, barangay_id, phone, purok_address, sex, birth_date, age, valid_id_path, avatar, created_at, barangays(name)"
+      "id, name, email, role, is_approved, is_verified, barangay_id, phone, purok_address, sex, birth_date, age, valid_id_path, avatar, created_at, barangays(name)"
     )
     .order("created_at", { ascending: false })
     .limit(200);

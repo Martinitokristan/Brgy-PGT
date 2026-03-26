@@ -20,6 +20,7 @@ import ImageLightbox from "@/app/components/ui/ImageLightbox";
 import { supabase } from "@/lib/supabaseClient";
 import { useT } from "@/lib/useT";
 import { useEffect } from "react";
+import { ShieldCheck } from "lucide-react";
 
 type Post = {
   id: number;
@@ -426,7 +427,9 @@ export default function FeedPage() {
     )}
 
     <div ref={feedRef} className="mx-auto w-full max-w-5xl space-y-6 px-0 sm:px-4">
+
       {/* What's on your mind? Card */}
+      {me?.is_verified || me?.role === "admin" ? (
       <div className="overflow-hidden rounded-none border-b border-slate-100 bg-white dark:bg-slate-900 dark:border-slate-700 px-4 py-3 sm:rounded-2xl sm:border sm:shadow-sm sm:ring-1 sm:ring-slate-200 dark:sm:ring-slate-700">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-700 text-white font-bold text-sm shadow">
@@ -440,6 +443,7 @@ export default function FeedPage() {
           </button>
         </div>
       </div>
+      ) : null}
 
       <section className="space-y-4">
         {isLoading && (

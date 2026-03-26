@@ -104,21 +104,26 @@ async function handleLogin(body: any) {
     await supabase.auth.signInWithPassword({ email, password });
 
   if (authError || !authData.session || !authData.user) {
+    console.error("Login Auth Error:", authError?.message || authError);
     return NextResponse.json(
-      { error: "Invalid email or password." },
+      { error: authError?.message || "Invalid email or password." },
       { status: 401 }
     );
   }
 
   const user = authData.user;
 
-  const { data: profile } = await service
+  const { data: profile, error: profileError } = await service
     .from("profiles")
     .select(
       "id, role, is_approved, barangay_id, phone, purok_address, sex, birth_date, age"
     )
     .eq("id", user.id)
     .maybeSingle();
+
+  if (profileError) {
+    console.error("Profile Fetch Error:", profileError);
+  }
 
   // Admins skip device verification
   if (profile?.role === "admin" || !deviceToken) {

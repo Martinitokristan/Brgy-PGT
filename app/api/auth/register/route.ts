@@ -364,21 +364,73 @@ async function handleVerify(request: Request, searchParams: URLSearchParams) {
     return NextResponse.redirect(`${appUrl}/verify-success?error=Link has expired. Please register again.`);
   }
 
-  // Already verified? Just redirect to success
+  // Already verified? Check if user already exists in auth
   if (pending.email_verified) {
+    // User already created — just send them to success page to log in
     return NextResponse.redirect(`${appUrl}/verify-success`);
   }
 
-  // Mark email as verified
-  const { error: updateError } = await supabaseService
+  // ── Create the real Supabase auth user now ──
+  const { data: newUser, error: createError } = await supabaseService.auth.admin.createUser({
+    email: pending.email,
+    password: pending.password_hash,
+    email_confirm: true, // auto-confirm so they can log in immediately
+  });
+
+  if (createError || !newUser?.user) {
+    console.error("Auth User Creation Error:", createError);
+    // If user already exists (duplicate click), still succeed
+    if (createError?.message?.includes("already been registered")) {
+      await supabaseService
+        .from("pending_registrations")
+        .update({ email_verified: true })
+        .eq("id", pending.id);
+      return NextResponse.redirect(`${appUrl}/verify-success`);
+    }
+    return NextResponse.redirect(`${appUrl}/verify-success?error=Could not create account. Please contact support.`);
+  }
+
+  const userId = newUser.user.id;
+
+  // ── Create the profile row ──
+  const { error: profileError } = await supabaseService.from("profiles").insert({
+    id: userId,
+    name: pending.name,
+    email: pending.email,
+    phone: pending.phone,
+    purok_address: pending.purok_address,
+    sex: pending.sex,
+    birth_date: pending.birth_date,
+    age: pending.age,
+    barangay_id: pending.barangay_id,
+    role: "resident",
+    is_approved: true, // login-access granted immediately
+  });
+
+  if (profileError) {
+    console.error("Profile Creation Error:", profileError);
+    // Non-fatal: user is created, profile can be fixed later
+  }
+
+  // ── Trust the device that registered ──
+  if (pending.device_token) {
+    try {
+      await supabaseService.from("trusted_devices").insert({
+        user_id: userId,
+        device_token: pending.device_token,
+        last_used_at: new Date().toISOString(),
+      });
+    } catch {
+      // Non-fatal
+    }
+  }
+
+  // ── Mark verified and clean up ──
+  await supabaseService
     .from("pending_registrations")
     .update({ email_verified: true })
     .eq("id", pending.id);
 
-  if (updateError) {
-    console.error("Verify Update Error:", updateError);
-    return NextResponse.redirect(`${appUrl}/verify-success?error=Could not verify email. Please try again.`);
-  }
-
   return NextResponse.redirect(`${appUrl}/verify-success`);
 }
+

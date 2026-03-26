@@ -9,10 +9,11 @@ import {
   Phone, 
   MapPin, 
   Calendar, 
-  Upload, 
   Building2, 
   ChevronRight,
-  UserCircle
+  UserCircle,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import DatePicker from "@/app/components/DatePicker";
 
@@ -43,11 +44,13 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [purokAddress, setPurokAddress] = useState("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [fileName, setFileName] = useState("No file chosen");
   const [deviceToken, setDeviceToken] = useState<string | null>(null);
   const [resending, setResending] = useState(false);
   const [resendMsg, setResendMsg] = useState<string | null>(null);
+
+  // Inline field errors
+  const [nameTouched, setNameTouched] = useState(false);
+  const [emailTouched, setEmailTouched] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -75,7 +78,7 @@ export default function RegisterPage() {
           clearInterval(intervalId);
           // Small delay for better UX
           setTimeout(() => {
-            router.push("/approval-pending?verified=true");
+            router.push("/feed");
           }, 1500);
         }
       } catch (err) {
@@ -104,20 +107,17 @@ export default function RegisterPage() {
     return password.length >= 8 && /[A-Za-z]/.test(password) && /[0-9]/.test(password);
   }, [password]);
 
+  const isPhoneValid = useMemo(() => {
+    return /^09\d{9}$/.test(phone);
+  }, [phone]);
+
+  const isEmailValid = useMemo(() => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }, [email]);
+
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.replace(/[^0-9]/g, "").slice(0, 11);
     setPhone(val);
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      setFileName(file.name);
-    } else {
-      setImageFile(null);
-      setFileName("No file chosen");
-    }
   };
 
   async function handleSubmit(e: FormEvent) {
@@ -137,8 +137,8 @@ export default function RegisterPage() {
       return;
     }
 
-    if (!imageFile) {
-      setError("Please upload a valid ID.");
+    if (!isPhoneValid) {
+      setError("Phone number must be in PH format: 09XXXXXXXXX (11 digits).");
       setSubmitting(false);
       return;
     }
@@ -152,7 +152,6 @@ export default function RegisterPage() {
     formData.append("sex", sex);
     formData.append("birth_date", birthDate || "");
     formData.append("age", age || "");
-    formData.append("valid_id", imageFile);
     if (deviceToken) {
       formData.append("device_token", deviceToken);
     }
@@ -265,9 +264,17 @@ export default function RegisterPage() {
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="block w-full rounded-2xl border-0 bg-slate-50 px-4 py-4 text-sm text-slate-900 transition-all placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/20 ring-1 ring-slate-200"
+                  onBlur={() => setNameTouched(true)}
+                  className={`block w-full rounded-2xl border-0 bg-slate-50 px-4 py-4 text-sm text-slate-900 transition-all placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/20 ring-1 ${
+                    nameTouched && !name ? "ring-red-400" : "ring-slate-200"
+                  }`}
                   placeholder="Juan Dela Cruz"
                 />
+                {nameTouched && !name && (
+                  <p className="mt-1 flex items-center gap-1 px-1 text-[11px] font-bold text-red-500">
+                    <XCircle className="h-3 w-3" /> Full name is required.
+                  </p>
+                )}
               </div>
               <div className="space-y-2.5">
                 <label className="flex items-center gap-2 px-1 text-xs font-bold uppercase tracking-wider text-slate-500">
@@ -330,10 +337,25 @@ export default function RegisterPage() {
                   value={phone}
                   onChange={handlePhoneChange}
                   maxLength={11}
-                  className="block w-full rounded-2xl border-0 bg-slate-50 px-4 py-4 text-sm text-slate-900 transition-all placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/20 ring-1 ring-slate-200"
+                  className={`block w-full rounded-2xl border-0 bg-slate-50 px-4 py-4 text-sm text-slate-900 transition-all placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 ring-1 ${
+                    phone.length > 0
+                      ? isPhoneValid
+                        ? "ring-emerald-400 focus:ring-emerald-500/20"
+                        : "ring-red-400 focus:ring-red-500/20"
+                      : "ring-slate-200 focus:ring-blue-600/20"
+                  }`}
                   placeholder="09171234567"
                 />
-                <p className="px-1 text-[10px] font-medium text-slate-400">Must be exactly 11 digits (e.g., 09171234567)</p>
+                {phone.length > 0 && !isPhoneValid && (
+                  <p className="mt-1 flex items-center gap-1 px-1 text-[11px] font-bold text-red-500">
+                    <XCircle className="h-3 w-3" /> Must start with 09 and be exactly 11 digits.
+                  </p>
+                )}
+                {phone.length === 11 && isPhoneValid && (
+                  <p className="mt-1 flex items-center gap-1 px-1 text-[11px] font-bold text-emerald-500">
+                    <CheckCircle2 className="h-3 w-3" /> Valid PH number.
+                  </p>
+                )}
               </div>
               <div className="space-y-2.5">
                 <label className="flex items-center gap-2 px-1 text-xs font-bold uppercase tracking-wider text-slate-500">
@@ -345,9 +367,19 @@ export default function RegisterPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full rounded-2xl border-0 bg-slate-50 px-4 py-4 text-sm text-slate-900 transition-all placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/20 ring-1 ring-slate-200"
+                  onBlur={() => setEmailTouched(true)}
+                  className={`block w-full rounded-2xl border-0 bg-slate-50 px-4 py-4 text-sm text-slate-900 transition-all placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 ring-1 ${
+                    emailTouched && email && !isEmailValid
+                      ? "ring-red-400 focus:ring-red-500/20"
+                      : "ring-slate-200 focus:ring-blue-600/20"
+                  }`}
                   placeholder="you@example.com"
                 />
+                {emailTouched && email && !isEmailValid && (
+                  <p className="mt-1 flex items-center gap-1 px-1 text-[11px] font-bold text-red-500">
+                    <XCircle className="h-3 w-3" /> Invalid email format.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -446,34 +478,9 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            <div className="space-y-2.5">
-              <label className="flex items-center gap-2 px-1 text-xs font-bold uppercase tracking-wider text-slate-500">
-                <Upload className="h-3.5 w-3.5 text-blue-600" />
-                Upload Valid ID
-              </label>
-              <div className="group relative flex cursor-pointer items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 transition-all hover:border-blue-300 hover:bg-blue-50/30">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  className="absolute inset-0 z-10 cursor-pointer opacity-0"
-                />
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600/10 transition-transform group-hover:scale-105">
-                  <Upload className="h-5 w-5 text-blue-600" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-bold text-slate-700">{imageFile ? fileName : "Choose a file"}</p>
-                  <p className="text-[11px] font-medium text-slate-400">Valid ID (Driver's License, Passport, National ID)</p>
-                </div>
-                <span className="shrink-0 rounded-lg bg-blue-600 px-3 py-1.5 text-[11px] font-bold text-white shadow-sm group-hover:bg-blue-700">
-                  Browse
-                </span>
-              </div>
-            </div>
-
             <button
               type="submit"
-              disabled={submitting || !isPasswordSecure || password !== confirmPassword || phone.length !== 11}
+              disabled={submitting || !isPasswordSecure || password !== confirmPassword || !isPhoneValid}
               className="group relative inline-flex w-full items-center justify-center overflow-hidden rounded-[24px] bg-blue-600 px-8 py-5 text-base font-bold text-white shadow-xl shadow-blue-500/25 transition-all hover:bg-blue-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
             >
               <span className="relative z-10 mr-2">

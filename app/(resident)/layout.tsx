@@ -9,6 +9,7 @@ import {
   Menu,
   X,
   ShieldCheck,
+  ShieldAlert,
   LogOut,
   Search,
   Settings,
@@ -142,6 +143,28 @@ export default function ResidentLayout({ children }: { children: ReactNode }) {
             </div>
             <ChevronRight className="h-4 w-4 text-slate-300 shrink-0" />
           </Link>
+
+          {/* Verify badge — below user info */}
+          {me && !me.is_verified && me.role !== "admin" && (
+            <Link
+              href="/verify-account"
+              onClick={() => setIsSidebarOpen(false)}
+              className="mx-4 mt-2 flex items-center gap-2.5 rounded-xl bg-amber-50 px-4 py-2.5 ring-1 ring-amber-200 hover:bg-amber-100 transition-colors"
+            >
+              <ShieldAlert className="h-4 w-4 shrink-0 text-amber-600" />
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] font-bold text-amber-800">Verify your account</p>
+                <p className="text-[10px] text-amber-600">Get full access to post & comment</p>
+              </div>
+              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-amber-400" />
+            </Link>
+          )}
+          {me?.is_verified && (
+            <div className="mx-4 mt-2 flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-2 ring-1 ring-emerald-200">
+              <ShieldCheck className="h-4 w-4 text-emerald-600" />
+              <span className="text-[11px] font-bold text-emerald-700">Verified Account</span>
+            </div>
+          )}
 
           {/* — Menu Label — */}
           <p className="px-5 pt-5 pb-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">

@@ -38,6 +38,7 @@ type Post = {
   status: string | null;
   created_at: string;
   admin_response: string | null;
+  image: string | null;
   comment_count: number;
   reaction_counts: Record<string, number>;
   my_reaction: string | null;
@@ -595,6 +596,16 @@ export default function ProfileView({ userId }: { userId: string }) {
                       <p className="line-clamp-3 text-[14px] font-medium leading-relaxed text-slate-500/80 dark:text-slate-400">
                         {post.description}
                       </p>
+                      {post.image && (
+                        <div className="mt-3 overflow-hidden rounded-2xl">
+                          <img
+                            src={`${SUPABASE_URL}/storage/v1/object/public/post-images/${post.image}`}
+                            alt="Post image"
+                            className="w-full object-cover max-h-80"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                          />
+                        </div>
+                      )}
                       
                       {post.admin_response && (
                         <div className="mt-4 rounded-2xl bg-slate-50 dark:bg-slate-800 p-4 ring-1 ring-slate-100 dark:ring-slate-700">

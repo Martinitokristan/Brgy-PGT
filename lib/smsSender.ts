@@ -134,3 +134,15 @@ export async function sendSms(to: string, message: string): Promise<SmsResult> {
   }
 }
 
+// ─── Verification Approved SMS ─────────────────────────────────────────────
+export async function sendVerificationApprovedSms(
+  phone: string,
+  name: string
+): Promise<SmsResult> {
+  const firstName = name.split(" ")[0];
+  const message =
+    `Congratulations, ${firstName}! Your BarangayPGT account has been verified. ` +
+    `You now have full access to post, comment, and participate in your community. ` +
+    `- Barangay Pagatpatan`;
+  return sendSms(phone, message);
+}

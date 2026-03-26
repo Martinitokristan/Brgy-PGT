@@ -36,7 +36,7 @@ async function handleGetMe() {
   const { data, error } = await service
     .from("profiles")
     .select(
-      "id, name, email, role, is_approved, barangay_id, phone, purok_address, sex, birth_date, age, avatar, cover_photo"
+      "id, name, email, role, is_approved, is_verified, barangay_id, phone, purok_address, sex, birth_date, age, avatar, cover_photo"
     )
     .eq("id", user.id)
     .maybeSingle();
