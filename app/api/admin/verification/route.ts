@@ -21,8 +21,28 @@ export async function GET() {
     .order("submitted_at", { ascending: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data ?? []);
+  if (!data) return NextResponse.json([]);
+
+  // Generate signed URLs for private files
+  const requestsWithUrls = await Promise.all(data.map(async (req) => {
+    const { data: idData } = await service.storage
+      .from("verification-ids")
+      .createSignedUrl(req.valid_id_path, 3600); // 1 hour
+    
+    const { data: selfieData } = await service.storage
+      .from("verification-selfies")
+      .createSignedUrl(req.selfie_path, 3600);
+
+    return {
+      ...req,
+      valid_id_url: idData?.signedUrl,
+      selfie_url: selfieData?.signedUrl,
+    };
+  }));
+
+  return NextResponse.json(requestsWithUrls);
 }
+
 
 export async function PATCH(request: Request) {
   const supabase = await createSupabaseServerClient();

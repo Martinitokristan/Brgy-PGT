@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import useSWR from "swr";
 import { useState } from "react";
@@ -41,6 +41,8 @@ type VerificationRequest = {
   valid_id_type: string;
   valid_id_path: string;
   selfie_path: string;
+  valid_id_url?: string;
+  selfie_url?: string;
   submitted_at: string;
   rejection_reason: string | null;
   profiles: {
@@ -51,6 +53,7 @@ type VerificationRequest = {
     purok_address: string | null;
   } | null;
 };
+
 
 const ID_TYPE_LABELS: Record<string, string> = {
   national_id: "National ID",
@@ -247,17 +250,18 @@ export default function AdminUsersPage() {
               <div className="border-t border-slate-50 px-6 pb-6 pt-4">
                 <div className="flex flex-wrap gap-2 mb-4">
                   <button
-                    onClick={() => setViewingModal({ url: getVerificationFileUrl("verification-ids", req.valid_id_path), title: "Valid ID" })}
+                    onClick={() => setViewingModal({ url: req.valid_id_url ?? "", title: "Valid ID" })}
                     className="flex items-center gap-2 rounded-xl border border-blue-600 px-4 py-2 text-xs font-bold text-blue-600 hover:bg-blue-50"
                   >
                     <ImageIcon className="h-4 w-4" /> View Valid ID
                   </button>
                   <button
-                    onClick={() => setViewingModal({ url: getVerificationFileUrl("verification-selfies", req.selfie_path), title: "Selfie Photo" })}
+                    onClick={() => setViewingModal({ url: req.selfie_url ?? "", title: "Selfie Photo" })}
                     className="flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50"
                   >
                     <Camera className="h-4 w-4" /> View Selfie
                   </button>
+
                 </div>
                 {/* Reject reason input */}
                 {rejectId === req.id && (
