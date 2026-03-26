@@ -105,10 +105,26 @@ export async function PATCH(request: Request) {
       .single();
 
     if (userProfile?.phone) {
-      await sendVerificationApprovedSms(userProfile.phone, userProfile.name ?? "Resident");
+      const result = await sendVerificationApprovedSms(userProfile.phone, userProfile.name ?? "Resident");
+      
+      // Log to SMS history
+      const firstName = (userProfile.name ?? "Resident").split(" ")[0];
+      const message =
+        `Congratulations, ${firstName}! Your BarangayPGT account has been verified. ` +
+        `You now have full access to post, comment, and participate in your community. ` +
+        `- Barangay Pagatpatan`;
+
+      await service.from("sms_logs").insert({
+        admin_id: user.id,
+        recipient_phone: userProfile.phone,
+        message_content: message,
+        status: result.success ? "sent" : "failed",
+        provider_message_id: result.success ? result.sid : null,
+        error_message: !result.success ? result.error : null,
+      });
     }
 
-    return NextResponse.json({ ok: true, message: "User verified and SMS sent." });
+    return NextResponse.json({ ok: true, message: "User verified and SMS logged." });
   }
 
   if (action === "reject") {

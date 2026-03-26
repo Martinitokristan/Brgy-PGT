@@ -276,8 +276,8 @@ export default function ResidentLayout({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      {/* Top App Bar */}
-      {pathname?.startsWith("/profile/") ? (
+      {/* Top App Bar — hidden on verify-account (full-screen flow) */}
+      {pathname === "/verify-account" ? null : pathname?.startsWith("/profile/") ? (
         /* On profile pages: only show back + search */
         <header className="sticky top-0 z-30 flex h-14 w-full items-center justify-between bg-transparent px-4">
           <button
@@ -314,41 +314,43 @@ export default function ResidentLayout({ children }: { children: ReactNode }) {
       )}
 
       {/* Main Content */}
-      <main className={`flex-1 pb-16 ${pathname?.startsWith("/profile/") ? "-mt-14" : ""}`}>
+      <main className={`flex-1 ${pathname === "/verify-account" ? "pb-0" : "pb-16"} ${pathname?.startsWith("/profile/") ? "-mt-14" : ""}`}>
         {children}
       </main>
 
-      {/* Bottom Tab Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-30 flex h-16 items-stretch border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
-        {bottomTabs.map((tab) => {
-          const Icon = tab.icon;
-          const safePath = pathname || "";
-          const isActive =
-            safePath === tab.href ||
-            (tab.href !== "/feed" && safePath.startsWith(tab.href));
-          return (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              className={`flex flex-1 flex-col items-center justify-center gap-0.5 transition-colors ${
-                isActive ? "text-blue-600" : "text-slate-900 dark:text-slate-200"
-              }`}
-            >
-              <Icon className="h-6 w-6" strokeWidth={isActive ? 2.5 : 2} />
-              {isActive && (
-                <div className="h-0.5 w-6 rounded-full bg-blue-600" />
-              )}
-            </Link>
-          );
-        })}
-        {/* Menu Tab */}
-        <button
-          onClick={() => setIsSidebarOpen(true)}
-          className="flex flex-1 flex-col items-center justify-center gap-0.5 text-slate-900 dark:text-slate-200 transition-colors hover:text-slate-600"
-        >
-          <Menu className="h-6 w-6" strokeWidth={2} />
-        </button>
-      </nav>
+      {/* Bottom Tab Navigation — hidden on verify-account */}
+      {pathname !== "/verify-account" && (
+        <nav className="fixed bottom-0 left-0 right-0 z-30 flex h-16 items-stretch border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+          {bottomTabs.map((tab) => {
+            const Icon = tab.icon;
+            const safePath = pathname || "";
+            const isActive =
+              safePath === tab.href ||
+              (tab.href !== "/feed" && safePath.startsWith(tab.href));
+            return (
+              <Link
+                key={tab.href}
+                href={tab.href}
+                className={`flex flex-1 flex-col items-center justify-center gap-0.5 transition-colors ${
+                  isActive ? "text-blue-600" : "text-slate-900 dark:text-slate-200"
+                }`}
+              >
+                <Icon className="h-6 w-6" strokeWidth={isActive ? 2.5 : 2} />
+                {isActive && (
+                  <div className="h-0.5 w-6 rounded-full bg-blue-600" />
+                )}
+              </Link>
+            );
+          })}
+          {/* Menu Tab */}
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="flex flex-1 flex-col items-center justify-center gap-0.5 text-slate-900 dark:text-slate-200 transition-colors hover:text-slate-600"
+          >
+            <Menu className="h-6 w-6" strokeWidth={2} />
+          </button>
+        </nav>
+      )}
     </div>
   );
 }
