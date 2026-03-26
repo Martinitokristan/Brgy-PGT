@@ -143,9 +143,17 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabaseService
     .from("profiles")
-    .select("barangay_id")
+    .select("barangay_id, is_verified, role")
     .eq("id", user.id)
     .maybeSingle();
+
+  // Only verified residents (or admins) can post
+  if (!profile?.is_verified && profile?.role !== "admin") {
+    return NextResponse.json(
+      { error: "Your account must be verified before you can post. Please verify your identity in your account settings." },
+      { status: 403 }
+    );
+  }
 
   const barangayId = profile?.barangay_id;
 

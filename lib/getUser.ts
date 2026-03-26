@@ -7,13 +7,13 @@ import { createSupabaseServerClient } from "./supabaseServer";
  * 1. First trying createSupabaseServerClient().auth.getUser() (uses @supabase/ssr)
  * 2. Falling back to manual cookie parsing + service client token verification
  */
-export async function getAuthUser(): Promise<{ id: string } | null> {
+export async function getAuthUser(): Promise<any | null> {
   // ── Strategy 1: createSupabaseServerClient (standard SSR path) ──
   try {
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase.auth.getUser();
-    if (!error && data.user?.id) {
-      return { id: data.user.id };
+    if (!error && data.user) {
+      return data.user;
     }
   } catch (e) {
     console.warn("getAuthUser SSR strategy failed:", e);
@@ -23,12 +23,6 @@ export async function getAuthUser(): Promise<{ id: string } | null> {
   try {
     const cookieStore = await cookies();
     const allCookies = cookieStore.getAll();
-
-    console.log(
-      "[getAuthUser] cookies found:",
-      allCookies.map((c) => c.name)
-    );
-
     let rawToken: string | null = null;
 
     // Single cookie: sb-<ref>-auth-token (no dot suffix)
@@ -56,7 +50,6 @@ export async function getAuthUser(): Promise<{ id: string } | null> {
     }
 
     if (!rawToken) {
-      console.warn("[getAuthUser] no access_token found in cookies");
       return null;
     }
 
@@ -64,11 +57,10 @@ export async function getAuthUser(): Promise<{ id: string } | null> {
     const { data, error } = await service.auth.getUser(rawToken);
 
     if (error || !data.user) {
-      console.warn("[getAuthUser] token verification failed:", error?.message);
       return null;
     }
 
-    return { id: data.user.id };
+    return data.user;
   } catch (err) {
     console.error("getAuthUser fallback error:", err);
     return null;

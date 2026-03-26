@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Send, Loader2, Heart, ChevronDown, ChevronUp } from "lucide-react";
+import { X, Send, Loader2, Heart, ChevronDown, ChevronUp, ShieldCheck } from "lucide-react";
 import useSWR from "swr";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
@@ -156,39 +156,52 @@ export default function CommentDrawer({ postId, isOpen, onClose, me }: CommentDr
 
             {/* Input area */}
             <div className="shrink-0 border-t border-slate-100 bg-white px-4 pb-8 pt-3 sm:pb-4">
-              {replyingTo && (
-                <div className="mb-2 flex items-center justify-between rounded-xl bg-blue-50 px-3 py-1.5">
-                  <p className="text-xs text-slate-500">
-                    Replying to <span className="font-bold text-blue-700">{replyingTo.profiles?.name || "comment"}</span>
-                  </p>
-                  <button onClick={() => setReplyingTo(null)} className="text-slate-400 hover:text-slate-600">
-                    <X size={14} />
-                  </button>
+              {me && !me.is_verified && me.role !== "admin" ? (
+                <div className="flex items-center gap-3 rounded-2xl bg-amber-50 border border-amber-200 px-4 py-3">
+                  <ShieldCheck className="h-5 w-5 text-amber-500 shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-[13px] font-bold text-amber-800">You can read comments</p>
+                    <p className="text-[11px] text-amber-600">Verify your account to join the conversation.</p>
+                  </div>
+                  <a href="/verify-account" className="shrink-0 rounded-full bg-amber-500 px-3 py-1.5 text-[12px] font-bold text-white hover:bg-amber-600 transition-colors">Verify</a>
                 </div>
+              ) : (
+                <>
+                  {replyingTo && (
+                    <div className="mb-2 flex items-center justify-between rounded-xl bg-blue-50 px-3 py-1.5">
+                      <p className="text-xs text-slate-500">
+                        Replying to <span className="font-bold text-blue-700">{replyingTo.profiles?.name || "comment"}</span>
+                      </p>
+                      <button onClick={() => setReplyingTo(null)} className="text-slate-400 hover:text-slate-600">
+                        <X size={14} />
+                      </button>
+                    </div>
+                  )}
+                  <form onSubmit={handleSubmit} className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
+                      {me?.name?.charAt(0) || "U"}
+                    </div>
+                    <div className="relative flex-1">
+                      <input
+                        ref={replyInputRef}
+                        type="text"
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void handleSubmit(); } }}
+                        placeholder={replyingTo ? `Reply to ${replyingTo.profiles?.name ?? ""}...` : "Write a public comment..."}
+                        className="w-full rounded-full bg-slate-100 px-4 py-2.5 pr-14 text-[14px] text-slate-900 outline-none ring-1 ring-inset ring-slate-200 placeholder:text-slate-400 focus:bg-white focus:ring-blue-500"
+                      />
+                      <button
+                        type="submit"
+                        disabled={!newComment.trim() || isSubmitting}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[14px] font-bold text-blue-600 disabled:opacity-40"
+                      >
+                        {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : "Post"}
+                      </button>
+                    </div>
+                  </form>
+                </>
               )}
-              <form onSubmit={handleSubmit} className="flex items-center gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
-                  {me?.name?.charAt(0) || "U"}
-                </div>
-                <div className="relative flex-1">
-                  <input
-                    ref={replyInputRef}
-                    type="text"
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void handleSubmit(); } }}
-                    placeholder={replyingTo ? `Reply to ${replyingTo.profiles?.name ?? ""}...` : "Write a public comment..."}
-                    className="w-full rounded-full bg-slate-100 px-4 py-2.5 pr-14 text-[14px] text-slate-900 outline-none ring-1 ring-inset ring-slate-200 placeholder:text-slate-400 focus:bg-white focus:ring-blue-500"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!newComment.trim() || isSubmitting}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[14px] font-bold text-blue-600 disabled:opacity-40"
-                  >
-                    {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : "Post"}
-                  </button>
-                </div>
-              </form>
             </div>
           </motion.div>
         </>

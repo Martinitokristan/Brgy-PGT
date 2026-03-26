@@ -128,39 +128,38 @@ async function handleGetUsers() {
     return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 });
   }
 
-  const { data: pending } = await service
-    .from("pending_registrations")
-    .select("id, name, email, barangay_id, phone, purok_address, sex, birth_date, age, valid_id_path, email_verified, created_at")
-    .eq("email_verified", true)
-    .order("created_at", { ascending: false })
-    .limit(100);
+  const profilesList = profiles ?? [];
+  const existingEmails = new Set(profilesList.map((p) => p.email?.toLowerCase()).filter(Boolean));
 
-  const pendingAsProfiles = (pending ?? []).map((p) => ({
-    id: `pending_${p.id}`,
-    pending_id: p.id,
-    name: p.name,
-    email: p.email,
-    role: "resident",
-    is_approved: false,
-    barangay_id: p.barangay_id,
-    phone: p.phone,
-    purok_address: p.purok_address,
-    sex: p.sex,
-    birth_date: p.birth_date,
-    age: p.age,
-    valid_id_path: p.valid_id_path,
-    avatar: null,
-    created_at: p.created_at,
-    barangays: null,
-    source: "pending" as const,
-  }));
+  // Discovery: Find users in Auth that have NO profile record
+  const { data: authData } = await service.auth.admin.listUsers();
+  const orphanedUsers = (authData?.users ?? [])
+    .filter((u) => u.email && !existingEmails.has(u.email.toLowerCase()))
+    .map((u) => ({
+      id: u.id,
+      name: u.user_metadata?.name || "Resident",
+      email: u.email,
+      role: "resident",
+      is_approved: true, 
+      barangay_id: null,
+      phone: u.user_metadata?.phone || null,
+      purok_address: null,
+      sex: null,
+      birth_date: null,
+      age: null,
+      valid_id_path: null,
+      avatar: null,
+      created_at: u.created_at,
+      barangays: null,
+      source: "profile" as const,
+    }));
 
-  const existingProfiles = (profiles ?? []).map((p) => ({
+  const existingProfiles = profilesList.map((p) => ({
     ...p,
     source: "profile" as const,
   }));
 
-  const merged = [...pendingAsProfiles, ...existingProfiles];
+  const merged = [...existingProfiles, ...orphanedUsers];
   return NextResponse.json(merged, { status: 200 });
 }
 
@@ -178,124 +177,6 @@ async function handleUpdateUser(body: any, adminUser: any) {
 
   const service = createSupabaseServiceClient();
 
-  // Handle pending registration approval
-  if (id.startsWith("pending_") && isApproved === true) {
-    const pendingId = Number(id.replace("pending_", ""));
-
-    const { data: pending, error: pendingError } = await service
-      .from("pending_registrations")
-      .select("*")
-      .eq("id", pendingId)
-      .maybeSingle();
-
-    if (pendingError || !pending) {
-      return NextResponse.json({ error: "Pending registration not found." }, { status: 404 });
-    }
-
-    // Create Supabase Auth User
-    const { data: created, error: createError } = await service.auth.admin.createUser({
-      email: pending.email,
-      password: pending.password_hash,
-      email_confirm: true,
-    });
-
-    let userId: string | null = created?.user?.id ?? null;
-    if (createError) {
-      console.error("Auth Creation Error:", createError.message);
-      if (createError.message?.includes("already been registered") || createError.message?.includes("already registered")) {
-        const { data: existingUsers } = await service.auth.admin.listUsers();
-        const existingUser = existingUsers?.users?.find((u) => u.email === pending.email);
-        if (existingUser) {
-          userId = existingUser.id;
-        } else {
-          return NextResponse.json(
-            { error: "User already registered but could not be found." },
-            { status: 500 }
-          );
-        }
-      } else {
-        return NextResponse.json(
-          { error: createError.message || "Failed to create user account." },
-          { status: 500 }
-        );
-      }
-    }
-
-    if (!userId) {
-      return NextResponse.json({ error: "Failed to create user account." }, { status: 500 });
-    }
-
-    // Create or update profile
-    const { data: existingProfile } = await service
-      .from("profiles")
-      .select("id")
-      .eq("id", userId)
-      .maybeSingle();
-
-    if (existingProfile) {
-      const { error: updateErr } = await service.from("profiles")
-        .update({ is_approved: true, role: role || "resident" })
-        .eq("id", userId);
-      if (updateErr) console.error("Profile Update Error:", updateErr);
-    } else {
-      const { error: profileError } = await service.from("profiles").insert({
-        id: userId,
-        name: pending.name,
-        role: role || "resident",
-        is_approved: true,
-        barangay_id: pending.barangay_id,
-        phone: pending.phone,
-        purok_address: pending.purok_address,
-        sex: pending.sex,
-        birth_date: pending.birth_date,
-        age: pending.age,
-        valid_id_path: pending.valid_id_path,
-        email: pending.email,
-      });
-      if (profileError) console.error("Profile Creation Error:", profileError);
-    }
-
-    // Trust the device used during registration
-    if (pending.device_token) {
-      try {
-        await service.from("trusted_devices").upsert({
-          user_id: userId,
-          device_token: pending.device_token,
-          last_used_at: new Date().toISOString(),
-        }, { onConflict: "user_id,device_token" });
-      } catch (trustErr) {
-        console.error("Device Trust Error:", trustErr);
-      }
-    }
-
-    // Delete the pending registration
-    await service.from("pending_registrations").delete().eq("id", pendingId);
-
-    // Send SMS notification
-    if (pending.phone) {
-      const msg = "Congratulations! Your registration with Brgy. Pagatpatan has been approved. You can now access all resident features.";
-      const result = await sendSms(pending.phone, msg);
-
-      await service.from("sms_logs").insert({
-        admin_id: adminUser?.id ?? null,
-        recipient_phone: pending.phone,
-        message_content: msg,
-        status: result.success ? "sent" : "failed",
-        provider_message_id: result.success ? result.sid : null,
-        error_message: !result.success ? result.error : null,
-      });
-    }
-
-    return NextResponse.json({ ok: true }, { status: 200 });
-  }
-
-  // Handle rejection of pending registration
-  if (id.startsWith("pending_") && isApproved === false) {
-    const pendingId = Number(id.replace("pending_", ""));
-    await service.from("pending_registrations").delete().eq("id", pendingId);
-    return NextResponse.json({ ok: true }, { status: 200 });
-  }
-
   // Handle existing profile updates
   const updates: Record<string, unknown> = {};
   if (typeof isApproved === "boolean") updates.is_approved = isApproved;
@@ -303,19 +184,6 @@ async function handleUpdateUser(body: any, adminUser: any) {
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ ok: true }, { status: 200 });
-  }
-
-  let profileToNotify = null;
-  if (isApproved === true) {
-    const { data: profile } = await service
-      .from("profiles")
-      .select("phone, is_approved")
-      .eq("id", id)
-      .maybeSingle();
-
-    if (profile && !profile.is_approved) {
-      profileToNotify = profile;
-    }
   }
 
   const { error: updateError } = await service
@@ -326,20 +194,6 @@ async function handleUpdateUser(body: any, adminUser: any) {
   if (updateError) {
     console.error("Profile update error:", updateError);
     return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
-  }
-
-  if (profileToNotify && profileToNotify.phone) {
-    const msg = "Congratulations! Your registration with Brgy. Pagatpatan has been approved. You can now access all resident features.";
-    const result = await sendSms(profileToNotify.phone, msg);
-
-    await service.from("sms_logs").insert({
-      admin_id: adminUser?.id ?? null,
-      recipient_phone: profileToNotify.phone,
-      message_content: msg,
-      status: result.success ? "sent" : "failed",
-      provider_message_id: result.success ? result.sid : null,
-      error_message: !result.success ? result.error : null,
-    });
   }
 
   return NextResponse.json({ ok: true }, { status: 200 });

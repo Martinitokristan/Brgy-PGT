@@ -114,6 +114,21 @@ export async function POST(request: Request, props: Params) {
   const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  // Check if user is verified (or admin)
+  const service2 = createSupabaseServiceClient();
+  const { data: myProfile } = await service2
+    .from("profiles")
+    .select("is_verified, role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (!myProfile?.is_verified && myProfile?.role !== "admin") {
+    return NextResponse.json(
+      { error: "Your account must be verified to interact with posts." },
+      { status: 403 }
+    );
+  }
+
   const body = await request.json().catch(() => null);
   const action = body?.action as string | undefined;
 

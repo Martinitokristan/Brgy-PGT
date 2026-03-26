@@ -12,18 +12,25 @@ function VerifySuccessContent() {
 
   useEffect(() => {
     if (error) return;
-    // Count down then redirect to feed
+    // Count down — don't call router.push inside state updater
     const interval = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
-          router.push("/feed");
+          return 0;
         }
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [error, router]);
+  }, [error]);
+
+  // Separate effect handles the redirect (never called during render)
+  useEffect(() => {
+    if (!error && countdown === 0) {
+      router.push("/feed");
+    }
+  }, [countdown, error, router]);
 
   if (error) {
     return (
@@ -69,17 +76,24 @@ function VerifySuccessContent() {
             Email Verified! 🎉
           </h1>
           <p className="mx-auto mb-6 max-w-xs text-base font-medium leading-relaxed text-slate-500">
-            Your email has been confirmed. Redirecting you to your feed in a moment...
+            Your email has been confirmed. Sign in below to access your feed.
           </p>
 
-          <div className="rounded-2xl bg-emerald-50 p-5 ring-1 ring-emerald-100">
+          <div className="rounded-2xl bg-emerald-50 p-5 ring-1 ring-emerald-100 mb-5">
             <div className="flex items-center justify-center gap-3">
               <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
               <p className="text-sm font-bold text-emerald-700">
-                Redirecting to feed in {countdown}s...
+                {countdown > 0 ? `Redirecting in ${countdown}s...` : "Redirecting..."}
               </p>
             </div>
           </div>
+
+          <button
+            onClick={() => router.push("/feed")}
+            className="w-full rounded-2xl bg-emerald-600 py-3 text-sm font-bold text-white hover:bg-emerald-700 transition-colors"
+          >
+            Go to Feed
+          </button>
         </div>
         <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-600 to-emerald-700" />
       </div>

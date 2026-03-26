@@ -443,6 +443,24 @@ export default function FeedPage() {
           </button>
         </div>
       </div>
+      ) : me && !me.is_verified ? (
+        <div className="overflow-hidden rounded-none border-b border-amber-100 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 sm:rounded-2xl sm:border sm:border-amber-200 sm:shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <div className="flex-1">
+              <p className="text-[13px] font-bold text-amber-800">Account not yet verified</p>
+              <p className="text-[12px] text-amber-600">Verify your identity to post, react, and comment.</p>
+            </div>
+            <Link
+              href="/verify-account"
+              className="shrink-0 rounded-full bg-amber-500 px-3.5 py-1.5 text-[12px] font-bold text-white shadow hover:bg-amber-600 transition-colors"
+            >
+              Verify Now
+            </Link>
+          </div>
+        </div>
       ) : null}
 
       <section className="space-y-4">
@@ -622,37 +640,53 @@ export default function FeedPage() {
                     </>
                   )}
 
-                  {/* Like button — tap = toggle like, hold = emoji picker, drag to emoji */}
-                  <button
-                    onMouseDown={() => startLongPress(post.id)}
-                    onMouseUp={() => { cancelLongPress(); if (showingEmojiFor !== post.id) handleReact(post.id, "like"); }}
-                    onMouseLeave={cancelLongPress}
-                    onTouchStart={(e) => { e.stopPropagation(); startLongPress(post.id); }}
-                    onTouchMove={handleTouchMoveReaction}
-                    onTouchEnd={(e) => handleTouchEndReaction(e, post.id)}
-                    className={`flex min-w-0 select-none items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-bold transition-all hover:bg-slate-50 sm:gap-2 sm:text-[14px] ${
-                      post.my_reaction ? "text-blue-600" : "text-[#65676B]"
-                    }`}
-                  >
-                    {post.my_reaction ? (
-                      <span className="text-[18px] leading-none">
-                        {reactionEmojis.find(r => r.type === post.my_reaction)?.emoji ?? "👍"}
+                  {/* Like button */}
+                  {me?.is_verified || me?.role === "admin" ? (
+                    <button
+                      onMouseDown={() => startLongPress(post.id)}
+                      onMouseUp={() => { cancelLongPress(); if (showingEmojiFor !== post.id) handleReact(post.id, "like"); }}
+                      onMouseLeave={cancelLongPress}
+                      onTouchStart={(e) => { e.stopPropagation(); startLongPress(post.id); }}
+                      onTouchMove={handleTouchMoveReaction}
+                      onTouchEnd={(e) => handleTouchEndReaction(e, post.id)}
+                      className={`flex min-w-0 select-none items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-bold transition-all hover:bg-slate-50 sm:gap-2 sm:text-[14px] ${
+                        post.my_reaction ? "text-blue-600" : "text-[#65676B]"
+                      }`}
+                    >
+                      {post.my_reaction ? (
+                        <span className="text-[18px] leading-none">
+                          {reactionEmojis.find(r => r.type === post.my_reaction)?.emoji ?? "👍"}
+                        </span>
+                      ) : (
+                        <ThumbsUp size={18} className="shrink-0" />
+                      )}
+                      <span className="truncate capitalize">
+                        {post.my_reaction ? (reactionEmojis.find(r => r.type === post.my_reaction)?.label ?? "Like") : "Like"}
                       </span>
-                    ) : (
+                    </button>
+                  ) : (
+                    <Link href="/verify-account" className="flex min-w-0 select-none items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-bold text-slate-300 sm:gap-2 sm:text-[14px]" title="Verify your account to react">
                       <ThumbsUp size={18} className="shrink-0" />
-                    )}
-                    <span className="truncate capitalize">
-                      {post.my_reaction ? (reactionEmojis.find(r => r.type === post.my_reaction)?.label ?? "Like") : "Like"}
-                    </span>
-                  </button>
+                      <span className="truncate">Like</span>
+                    </Link>
+                  )}
 
-                  <button
-                    onClick={() => openComments(post.id)}
-                    className="flex min-w-0 items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-bold text-[#65676B] transition-all hover:bg-slate-50 sm:gap-2 sm:text-[14px]"
-                  >
-                    <MessageCircle size={18} className="shrink-0" />
-                    <span className="truncate">{t("comment")}</span>
-                  </button>
+                  {/* Comment button */}
+                  {me?.is_verified || me?.role === "admin" ? (
+                    <button
+                      onClick={() => openComments(post.id)}
+                      className="flex min-w-0 items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-bold text-[#65676B] transition-all hover:bg-slate-50 sm:gap-2 sm:text-[14px]"
+                    >
+                      <MessageCircle size={18} className="shrink-0" />
+                      <span className="truncate">{t("comment")}</span>
+                    </button>
+                  ) : (
+                    <Link href="/verify-account" className="flex min-w-0 items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-bold text-slate-300 sm:gap-2 sm:text-[14px]" title="Verify your account to comment">
+                      <MessageCircle size={18} className="shrink-0" />
+                      <span className="truncate">{t("comment")}</span>
+                    </Link>
+                  )}
+
                   <button
                     onClick={() => handleShare(post.id)}
                     className="flex min-w-0 items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-bold text-[#65676B] transition-all hover:bg-slate-50 sm:gap-2 sm:text-[14px]"

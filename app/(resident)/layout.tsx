@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useState, useEffect, useRef } from "react";
 import {
   Home,
   Bell,
@@ -22,7 +22,10 @@ import { useRouter, usePathname } from "next/navigation";
 import useSWR from "swr";
 import Link from "next/link";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = (url: string) => fetch(url).then((res) => {
+  if (!res.ok) throw new Error("Failed to fetch");
+  return res.json();
+});
 
 // Inline translation maps for the layout
 const layoutT: Record<string, Record<string, string>> = {
@@ -35,7 +38,14 @@ export default function ResidentLayout({ children }: { children: ReactNode }) {
   const [showSecurityMenu, setShowSecurityMenu] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
-  const { data: me } = useSWR("/api/profile?action=me", fetcher);
+  const { data: me, error } = useSWR("/api/profile?action=me", fetcher);
+
+  // Guard: if fetcher returns error (e.g. 401), redirect back to home.
+  useEffect(() => {
+    if (error) {
+       router.push("/");
+    }
+  }, [error, router]);
 
   // Language support
   const [lang, setLang] = useState("en");
@@ -49,25 +59,24 @@ export default function ResidentLayout({ children }: { children: ReactNode }) {
   }, []);
   const tl = (key: string) => layoutT[lang]?.[key] ?? layoutT.en[key] ?? key;
 
+  const hasCheckedRole = useRef(false);
+
   useEffect(() => {
-    async function checkRole() {
-      const res = await fetch("/api/profile?action=me");
-      if (res.ok) {
-        const data = await res.json();
-        if (data.role === "admin") {
-          if (pathname?.startsWith("/profile/")) {
-            const userId = pathname.split("/").pop();
-            if (userId && userId !== "me") {
-              router.push(`/admin/users/${userId}`);
-              return;
-            }
-          }
-          router.push("/admin/dashboard");
+    // Guard: only run once per session mount, and only once we have profile data
+    if (!me || hasCheckedRole.current) return;
+    hasCheckedRole.current = true;
+
+    if (me.role === "admin") {
+      if (pathname?.startsWith("/profile/")) {
+        const userId = pathname.split("/").pop();
+        if (userId && userId !== "me") {
+          router.push(`/admin/users/${userId}`);
+          return;
         }
       }
+      router.push("/admin/dashboard");
     }
-    void checkRole();
-  }, [router, pathname]);
+  }, [me, router, pathname]);
 
   // Close sidebar on route change
   useEffect(() => {
@@ -92,6 +101,9 @@ export default function ResidentLayout({ children }: { children: ReactNode }) {
 
   async function handleLogout() {
     await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "logout" }) }).catch(() => {});
+    // Clear SWR cache for profile to prevent stale role checks
+    const { mutate } = await import("swr");
+    mutate("/api/profile?action=me", null, false);
     router.push("/");
   }
 

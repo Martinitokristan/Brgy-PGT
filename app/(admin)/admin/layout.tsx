@@ -143,7 +143,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               </div>
             </div>
             <button 
-              onClick={() => router.push("/")}
+              onClick={async () => {
+                await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "logout" }) }).catch(() => {});
+                // Clear SWR cache for profile
+                const { mutate } = await import("swr");
+                mutate("/api/profile?action=me", null, false);
+                router.push("/");
+              }}
               className="group flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-slate-400 transition-all hover:text-white"
             >
               <LogOut className="h-5 w-5 text-slate-500 transition-all group-hover:rotate-180 group-hover:text-white" />

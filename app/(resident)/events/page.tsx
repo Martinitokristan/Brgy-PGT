@@ -15,7 +15,10 @@ type Event = {
   image: string | null;
 };
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = (url: string) => fetch(url).then((res) => {
+  if (!res.ok) throw new Error("Failed to fetch");
+  return res.json();
+});
 
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString("en-US", {
@@ -39,7 +42,8 @@ export default function EventsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const { t } = useT();
 
-  const filteredEvents = (events ?? []).filter(
+  const eventsList = Array.isArray(events) ? events : [];
+  const filteredEvents = eventsList.filter(
     (e) =>
       e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       e.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||

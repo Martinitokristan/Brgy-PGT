@@ -46,6 +46,30 @@ async function handleGetMe() {
     return NextResponse.json({ error: "Failed to fetch profile" }, { status: 500 });
   }
 
+  // Self-Healing: If profile record is missing but user is logged in, create it.
+  if (!data) {
+    const { error: insertError } = await service.from("profiles").insert({
+      id: user.id,
+      email: user.email,
+      name: user.user_metadata?.name || "Resident",
+      role: "resident",
+      is_approved: true, // They successfully logged in, so we trust they were once approved or just registered
+    });
+
+    if (insertError) {
+      console.error("Profile auto-creation error:", insertError);
+    } else {
+      // Return a basic profile object
+      return NextResponse.json({
+        id: user.id,
+        email: user.email,
+        name: user.user_metadata?.name || "Resident",
+        role: "resident",
+        is_approved: true,
+      });
+    }
+  }
+
   return NextResponse.json(
     { ...(data ?? {}) },
     { status: 200 }

@@ -343,17 +343,27 @@ async function handleDeviceVerify(body: any) {
     );
   }
 
-  const { data: profileRow, error: profileError } = await service
+  // Find the user ID by email. Check profiles first, then auth.users as fallback.
+  let userId: string | null = null;
+
+  const { data: profileRow } = await service
     .from("profiles")
     .select("id")
-    .eq("email", email)
+    .ilike("email", email)
     .maybeSingle();
 
-  if (profileError || !profileRow) {
-    return NextResponse.json({ error: "Invalid email or code." }, { status: 400 });
+  if (profileRow) {
+    userId = profileRow.id;
+  } else {
+    // Check auth.users directly via service-role
+    const { data: authData } = await service.auth.admin.listUsers();
+    const foundUser = authData?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
+    if (foundUser) userId = foundUser.id;
   }
 
-  const userId = profileRow.id as string;
+  if (!userId) {
+    return NextResponse.json({ error: "Invalid email or code." }, { status: 400 });
+  }
 
   const { data: otpRow, error: otpError } = await service
     .from("device_otps")
@@ -412,17 +422,24 @@ async function handleDeviceResend(body: any) {
     );
   }
 
+  let userId: string | null = null;
   const { data: profileRow } = await service
     .from("profiles")
     .select("id")
-    .eq("email", email)
+    .ilike("email", email)
     .maybeSingle();
 
-  if (!profileRow) {
-    return NextResponse.json({ ok: true }, { status: 200 });
+  if (profileRow) {
+    userId = profileRow.id;
+  } else {
+    const { data: authData } = await service.auth.admin.listUsers();
+    const foundUser = authData?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
+    if (foundUser) userId = foundUser.id;
   }
 
-  const userId = profileRow.id as string;
+  if (!userId) {
+    return NextResponse.json({ ok: true }, { status: 200 }); // Silent fail as before
+  }
 
   await service
     .from("device_otps")

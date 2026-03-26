@@ -403,6 +403,7 @@ async function handleVerify(request: Request, searchParams: URLSearchParams) {
     birth_date: pending.birth_date,
     age: pending.age,
     barangay_id: pending.barangay_id,
+    valid_id_path: pending.valid_id_path,
     role: "resident",
     is_approved: true, // login-access granted immediately
   });
@@ -426,11 +427,28 @@ async function handleVerify(request: Request, searchParams: URLSearchParams) {
   }
 
   // ── Mark verified and clean up ──
+  // We delete the pending registration row because the user and profile are now fully created.
   await supabaseService
     .from("pending_registrations")
-    .update({ email_verified: true })
+    .delete()
     .eq("id", pending.id);
 
-  return NextResponse.redirect(`${appUrl}/verify-success`);
+  // ── Sign in the new user so session cookies are set ──
+  // This means when /feed loads the middleware will see the new resident session
+  // (and not the admin session that may have been active in another tab)
+  try {
+    const { createSupabaseServerClient } = await import("@/lib/supabaseServer");
+    const serverClient = await createSupabaseServerClient();
+    await serverClient.auth.signInWithPassword({
+      email: pending.email,
+      password: pending.password_hash, // stored as plain text, hashed later by Supabase
+    });
+  } catch (signInErr) {
+    console.error("Auto-login after verify failed:", signInErr);
+    // Non-fatal — redirect to verify-success page so user can sign in manually
+    return NextResponse.redirect(`${appUrl}/verify-success`);
+  }
+
+  return NextResponse.redirect(`${appUrl}/feed`);
 }
 
