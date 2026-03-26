@@ -69,24 +69,31 @@ export default function DateTimePicker({
     }
   }, [open]);
 
+  // We use a ref to track the last 'open' state to detect when it actually transitions from false to true
+  const prevOpenRef = useRef(false);
+
   useEffect(() => {
-    if (open && value) {
-      const d = new Date(value);
-      setViewYear(d.getFullYear());
-      setViewMonth(d.getMonth());
-      const h = d.getHours();
-      setHour(h === 0 ? 12 : h > 12 ? h - 12 : h);
-      setMinute(d.getMinutes());
-      setPeriod(h >= 12 ? "PM" : "AM");
+    // Only initialize view state when opening the picker
+    const wasClosed = !prevOpenRef.current;
+    if (open && wasClosed) {
+      if (value) {
+        const d = new Date(value);
+        setViewYear(d.getFullYear());
+        setViewMonth(d.getMonth());
+        const h = d.getHours();
+        setHour(h === 0 ? 12 : h > 12 ? h - 12 : h);
+        setMinute(d.getMinutes());
+        setPeriod(h >= 12 ? "PM" : "AM");
+        setYearPageStart(Math.floor(d.getFullYear() / 20) * 20);
+      } else {
+        setHour(8);
+        setMinute(0);
+        setPeriod("AM");
+      }
       setView("calendar");
-      setYearPageStart(Math.floor(d.getFullYear() / 20) * 20);
-    } else if (open && !value) {
-      setView("calendar");
-      setHour(8);
-      setMinute(0);
-      setPeriod("AM");
     }
-  }, [open, value]);
+    prevOpenRef.current = open;
+  }, [open, value, minYear, resolvedMaxYear]);
 
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const startDay = new Date(viewYear, viewMonth, 1).getDay();
