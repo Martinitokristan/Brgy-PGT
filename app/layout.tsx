@@ -5,6 +5,16 @@ import ThemeProvider from "@/app/components/ThemeProvider";
 export const metadata = {
   title: "BarangayPGT",
   description: "The official digital platform for Barangay Pagatpatan residents",
+  icons: {
+    icon: [
+      {
+        url: "/icon.png?v=101",
+        type: "image/png",
+        sizes: "any",
+      },
+    ],
+    apple: "/icon.png?v=101",
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
