@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import useSWR from "swr";
+import Link from "next/link";
+import { useToast, ToastContainer } from "@/app/components/ui/toast";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { 
   MapPin, 
@@ -25,6 +27,7 @@ import {
   BellOff,
   ChevronDown,
   Image as ImageIcon,
+  User,
 } from "lucide-react";
 import CommentDrawer from "@/app/components/ui/CommentDrawer";
 import { useT } from "@/lib/useT";
@@ -114,6 +117,7 @@ export default function ProfileView({ userId }: { userId: string }) {
   const { data: profile, mutate, isLoading: profileLoading } = useSWR<ProfileData>(userId ? `/api/profile/${userId}` : null, fetcher);
   const { data: me } = useSWR("/api/profile?action=me", fetcher);
   const { t } = useT();
+  const { toasts, addToast } = useToast();
   
   useEffect(() => {
     if (!userId) return;
@@ -175,6 +179,7 @@ export default function ProfileView({ userId }: { userId: string }) {
   const [newStatus, setNewStatus] = useState("pending");
   const [uploadingPhoto, setUploadingPhoto] = useState<"avatar" | "cover" | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [snoozeStatus, setSnoozeStatus] = useState<{ days: number; until: string } | null>(null);
 
   function handlePhotoUpload(file: File, type: "avatar" | "cover_photo") {
     const which = type === "avatar" ? "avatar" : "cover";
@@ -214,6 +219,82 @@ export default function ProfileView({ userId }: { userId: string }) {
     if (isOwn) return;
     await fetch(`/api/profile/${userId}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "follow" }) });
     mutate();
+  };
+
+  const handleUnfollow = async () => {
+    if (isOwn) return;
+    try {
+      const response = await fetch(`/api/profile/${userId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "unfollow" }),
+      });
+      
+      if (response.ok) {
+        setShowFollowMenu(false);
+        mutate();
+      } else {
+        const error = await response.json();
+        alert(error.error || "Failed to unfollow");
+      }
+    } catch (error) {
+      console.error("Unfollow error:", error);
+      alert("Failed to unfollow");
+    }
+  };
+
+  const handleSnooze = async (days: number) => {
+    try {
+      const response = await fetch(`/api/profile/${userId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "snooze", days }),
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        const snoozeUntil = new Date(result.snooze_until);
+        setSnoozeStatus({ days, until: snoozeUntil.toISOString() });
+        addToast(`Notifications snoozed for ${days} days`, "success");
+        setShowFollowMenu(false);
+        mutate();
+      } else {
+        const error = await response.json();
+        if (error.code === "SCHEMA_CACHE") {
+          addToast("Initializing notification system... Please try again", "info");
+          // Retry after a short delay
+          setTimeout(() => handleSnooze(days), 2000);
+        } else {
+          addToast(error.error || "Failed to snooze notifications", "error");
+        }
+      }
+    } catch (error) {
+      console.error("Snooze error:", error);
+      addToast("Failed to snooze notifications", "error");
+    }
+  };
+
+  const handleUnsnooze = async () => {
+    try {
+      const response = await fetch(`/api/profile/${userId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "unsnooze" }),
+      });
+      
+      if (response.ok) {
+        setSnoozeStatus(null);
+        addToast("Notifications enabled", "success");
+        setShowFollowMenu(false);
+        mutate();
+      } else {
+        const error = await response.json();
+        addToast(error.error || "Failed to enable notifications", "error");
+      }
+    } catch (error) {
+      console.error("Unsnooze error:", error);
+      addToast("Failed to enable notifications", "error");
+    }
   };
 
   const handleShare = () => {
@@ -416,15 +497,24 @@ export default function ProfileView({ userId }: { userId: string }) {
           <div className="flex items-center justify-center gap-2 py-5 w-full px-4">
             {me && !isOwn && (
               <div className="relative">
-                {!is_following ? (
+                {!is_following && !snoozeStatus ? (
                   <button onClick={handleFollow} className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-[13px] font-bold text-white shadow-md transition-all hover:bg-blue-700 active:scale-95">
                     <UserPlus size={16} /><span>{t("follow")}</span>
                   </button>
                 ) : (
                   <div className="flex items-center gap-1">
                     <button onClick={() => setShowFollowMenu((v) => !v)} className="flex items-center gap-2 rounded-xl bg-slate-100 px-5 py-2.5 text-[13px] font-bold text-slate-700 transition-all hover:bg-slate-200 active:scale-95">
-                      <UserCheck size={16} className="text-blue-600" />
-                      <span>{t("following_btn")}</span>
+                      {snoozeStatus ? (
+                        <>
+                          <BellOff size={16} className="text-orange-600" />
+                          <span>Snoozed {snoozeStatus.days} days</span>
+                        </>
+                      ) : (
+                        <>
+                          <UserCheck size={16} className="text-blue-600" />
+                          <span>{t("following_btn")}</span>
+                        </>
+                      )}
                       <ChevronDown size={14} className={`transition-transform ${showFollowMenu ? "rotate-180" : ""}`} />
                     </button>
                   </div>
@@ -436,19 +526,19 @@ export default function ProfileView({ userId }: { userId: string }) {
                       <div className="px-4 pt-3 pb-1">
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Snooze notifications</p>
                       </div>
-                      <button onClick={() => setShowFollowMenu(false)} className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                      <button onClick={() => handleSnooze(7)} className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                         <BellOff size={16} className="text-slate-400" /> Snooze for 7 days
                       </button>
-                      <button onClick={() => setShowFollowMenu(false)} className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                      <button onClick={() => handleSnooze(30)} className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                         <BellOff size={16} className="text-slate-400" /> Snooze for 30 days
                       </button>
                       <div className="my-1 border-t border-slate-100 dark:border-slate-700" />
-                      <button onClick={() => setShowFollowMenu(false)} className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-semibold text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+                      <button onClick={() => handleUnsnooze()} className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-semibold text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
                         <BellRing size={16} /> Get notifications
                         <span className="ml-auto text-[9px] font-bold uppercase tracking-wide text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-1.5 py-0.5 rounded-full">First</span>
                       </button>
                       <div className="my-1 border-t border-slate-100 dark:border-slate-700" />
-                      <button onClick={() => { handleFollow(); setShowFollowMenu(false); }} className="flex w-full items-center gap-3 px-4 py-2.5 pb-3 text-left text-sm font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                      <button onClick={() => { handleUnfollow(); setShowFollowMenu(false); }} className="flex w-full items-center gap-3 px-4 py-2.5 pb-3 text-left text-sm font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
                         <UserMinus size={16} /> Unfollow
                       </button>
                     </div>
@@ -592,19 +682,61 @@ export default function ProfileView({ userId }: { userId: string }) {
                           </div>
                         )}
                       </div>
-                      <h3 className="text-[17px] font-extrabold text-slate-900 dark:text-white leading-tight tracking-tight">{post.title}</h3>
-                      <p className="line-clamp-3 text-[14px] font-medium leading-relaxed text-slate-500/80 dark:text-slate-400">
-                        {post.description}
-                      </p>
-                      {post.image && (
-                        <div className="mt-3 overflow-hidden rounded-2xl">
-                          <img
-                            src={`${SUPABASE_URL}/storage/v1/object/public/post-images/${post.image}`}
-                            alt="Post image"
-                            className="w-full object-cover max-h-80"
-                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                          />
+                      {post.purpose === "shared_post" && post.metadata ? (
+                        <div className="border-2 border-slate-200 dark:border-slate-700 rounded-xl p-4 bg-white dark:bg-slate-900">
+                          {/* Original Author Header */}
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+                              <User className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold text-slate-900 dark:text-white">
+                                {post.metadata.original_author_name}
+                              </p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                                Original Post • {post.metadata.original_created_at ? 
+                                  new Date(post.metadata.original_created_at).toLocaleDateString() : 
+                                  'Recently'
+                                }
+                              </p>
+                            </div>
+                          </div>
+                          
+                          {/* Original Post Content */}
+                          <h3 className="text-[17px] font-extrabold text-slate-900 dark:text-white leading-tight tracking-tight">
+                            {post.metadata.original_title}
+                          </h3>
+                          <p className="line-clamp-3 text-[14px] font-medium leading-relaxed text-slate-500/80 dark:text-slate-400">
+                            {post.metadata.original_description}
+                          </p>
+                          {post.metadata.original_image && (
+                            <div className="mt-3 overflow-hidden rounded-2xl">
+                              <img
+                                src={`${SUPABASE_URL}/storage/v1/object/public/post-images/${post.metadata.original_image}`}
+                                alt="Post image"
+                                className="w-full object-cover max-h-80"
+                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                              />
+                            </div>
+                          )}
                         </div>
+                      ) : (
+                        <>
+                          <h3 className="text-[17px] font-extrabold text-slate-900 dark:text-white leading-tight tracking-tight">{post.title}</h3>
+                          <p className="line-clamp-3 text-[14px] font-medium leading-relaxed text-slate-500/80 dark:text-slate-400">
+                            {post.description}
+                          </p>
+                          {post.image && (
+                            <div className="mt-3 overflow-hidden rounded-2xl">
+                              <img
+                                src={`${SUPABASE_URL}/storage/v1/object/public/post-images/${post.image}`}
+                                alt="Post image"
+                                className="w-full object-cover max-h-80"
+                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                              />
+                            </div>
+                          )}
+                        </>
                       )}
                       
                       {post.admin_response && (
@@ -862,6 +994,7 @@ export default function ProfileView({ userId }: { userId: string }) {
            </div>
         </div>
       )}
-    </div>
+    <ToastContainer toasts={toasts} />
+  </div>
   );
 }

@@ -58,8 +58,7 @@ export async function sendSms(to: string, message: string): Promise<SmsResult> {
     url.searchParams.set("message", message);
     url.searchParams.set("phone_number", phoneNumber);
 
-    console.log(`[SMS] Sending to ${phoneNumber} via ${url.origin}${url.pathname}`);
-
+    
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
 
@@ -79,11 +78,11 @@ export async function sendSms(to: string, message: string): Promise<SmsResult> {
     clearTimeout(timeout);
 
     const rawText = await response.text();
-    console.log("[SMS] Provider Raw Response:", rawText);
-    let data: Record<string, unknown> = {};
+        let data: Record<string, unknown> = {};
     try {
       data = rawText ? (JSON.parse(rawText) as Record<string, unknown>) : {};
-    } catch {
+    } catch (error) {
+      console.error("Error parsing response:", error);
       data = { message: rawText };
     }
 

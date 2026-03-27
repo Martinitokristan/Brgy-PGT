@@ -16,7 +16,7 @@ export async function GET() {
     // Fetch posts without joins to avoid schema cache FK issues with service client
     const { data: postsRaw, error } = await service
       .from("posts")
-      .select("*")
+      .select("*, original_post_id, metadata")
       .order("created_at", { ascending: false })
       .limit(50);
 
@@ -33,12 +33,12 @@ export async function GET() {
     // Batch-fetch profiles for all post authors
     const userIds = [...new Set(postList.map((p: any) => p.user_id).filter(Boolean))];
     const profileMap: Record<string, { name: string | null; avatar: string | null; role: string | null }> = {};
-    if (userIds.length > 0) {
-      const { data: profiles } = await service
+        if (userIds.length > 0) {
+      const { data: profiles, error: profileError } = await service
         .from("profiles")
         .select("id, name, avatar, role")
         .in("id", userIds);
-      for (const p of profiles ?? []) {
+                  for (const p of profiles ?? []) {
         profileMap[p.id] = { name: p.name, avatar: p.avatar, role: p.role };
       }
     }

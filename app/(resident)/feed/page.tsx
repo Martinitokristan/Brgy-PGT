@@ -13,6 +13,8 @@ import {
   X,
   Send,
   Loader2,
+  Share2,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
 import CommentDrawer from "@/app/components/ui/CommentDrawer";
@@ -21,6 +23,13 @@ import { supabase } from "@/lib/supabaseClient";
 import { useT } from "@/lib/useT";
 import { useEffect } from "react";
 import { ShieldCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type Post = {
   id: number;
@@ -37,6 +46,15 @@ type Post = {
   reaction_counts: Record<string, number>;
   my_reaction: string | null;
   comment_count: number;
+  original_post_id?: number | null;
+  metadata?: {
+    sharer_name?: string;
+    original_author_name?: string;
+    original_title?: string | null;
+    original_description?: string | null;
+    original_image?: string | null;
+    original_created_at?: string | null;
+  } | null;
 };
 
 const fetcher = (url: string) => fetch(url).then((res) => {
@@ -53,7 +71,10 @@ const ShareIcon = ({ className = "h-5 w-5" }: { className?: string }) => (
 export default function FeedPage() {
   const { data: me } = useSWR("/api/profile?action=me", fetcher);
   const { t } = useT();
-  const { data, error, isLoading, mutate } = useSWR<Post[]>("/api/posts", fetcher);
+  const { data: posts = [], isLoading, error, mutate } = useSWR<Post[]>("/api/posts", fetcher, {
+    onSuccess: (data) => {
+    }
+  });
   const [showingEmojiFor, setShowingEmojiFor] = useState<number | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const feedRef = useRef<HTMLDivElement>(null);
@@ -246,6 +267,8 @@ export default function FeedPage() {
 
   const [sharePostId, setSharePostId] = useState<number | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
+  const [isSharingToFeed, setIsSharingToFeed] = useState(false);
+  const [shareSuccess, setShareSuccess] = useState(false);
 
   const handleShare = (postId: number) => {
     setSharePostId(postId);
@@ -259,6 +282,40 @@ export default function FeedPage() {
       setShareCopied(true);
       setTimeout(() => setShareCopied(false), 2000);
     });
+  };
+
+  const handleShareToFeed = async () => {
+    if (!sharePostId) return;
+    
+    setIsSharingToFeed(true);
+    try {
+      const response = await fetch("/api/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ original_post_id: sharePostId }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setShareSuccess(true);
+        
+        // Force refresh the feed to show the shared post
+        await mutate();
+        
+        // Close modal after success
+        setTimeout(() => {
+          setSharePostId(null);
+          setShareSuccess(false);
+        }, 1500);
+      } else {
+        const error = await response.json();
+        console.error("Share failed:", error);
+      }
+    } catch (error) {
+      console.error("Error sharing to feed:", error);
+    } finally {
+      setIsSharingToFeed(false);
+    }
   };
 
   const openComments = (postId: number) => {
@@ -430,37 +487,35 @@ export default function FeedPage() {
 
       {/* What's on your mind? Card */}
       {me?.is_verified || me?.role === "admin" ? (
-      <div className="overflow-hidden rounded-none border-b border-slate-100 bg-white dark:bg-slate-900 dark:border-slate-700 px-4 py-3 sm:rounded-2xl sm:border sm:shadow-sm sm:ring-1 sm:ring-slate-200 dark:sm:ring-slate-700">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-700 text-white font-bold text-sm shadow">
-            {me?.name?.charAt(0) || "U"}
-          </div>
-          <button
-            onClick={() => setIsExpanding(true)}
-            className="flex-1 rounded-full border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 px-5 py-2 text-left text-sm text-slate-400 transition-all hover:bg-slate-100 dark:hover:bg-slate-700"
-          >
-            {t("whats_on_your_mind")}, {me?.name?.split(" ")[0] || ""}?
-          </button>
-        </div>
-      </div>
-      ) : me && !me.is_verified ? (
-        <div className="overflow-hidden rounded-none border-b border-amber-100 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 sm:rounded-2xl sm:border sm:border-amber-200 sm:shadow-sm">
+      <Card className="border-0 bg-background dark:bg-background sm:rounded-2xl sm:border sm:shadow-sm">
+        <CardContent className="p-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600">
-              <ShieldCheck className="h-5 w-5" />
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-sm shadow">
+              {me?.name?.charAt(0) || "U"}
             </div>
-            <div className="flex-1">
-              <p className="text-[13px] font-bold text-amber-800">Account not yet verified</p>
-              <p className="text-[12px] text-amber-600">Verify your identity to post, react, and comment.</p>
-            </div>
-            <Link
-              href="/verify-account"
-              className="shrink-0 rounded-full bg-amber-500 px-3.5 py-1.5 text-[12px] font-bold text-white shadow hover:bg-amber-600 transition-colors"
+            <Button
+              variant="outline"
+              onClick={() => setIsExpanding(true)}
+              className="flex-1 justify-start border-muted bg-muted font-normal text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             >
-              Verify Now
-            </Link>
+              {t("whats_on_your_mind")}, {me?.name?.split(" ")[0] || ""}?
+            </Button>
           </div>
-        </div>
+        </CardContent>
+      </Card>
+      ) : me && !me.is_verified ? (
+        <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-950/30">
+          <ShieldCheck className="h-5 w-5" />
+          <AlertDescription className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-bold text-amber-800">Account not yet verified</p>
+              <p className="text-xs text-amber-600">Verify your identity to post, react, and comment.</p>
+            </div>
+            <Button asChild size="sm" className="bg-amber-500 hover:bg-amber-600">
+              <Link href="/verify-account">Verify Now</Link>
+            </Button>
+          </AlertDescription>
+        </Alert>
       ) : null}
 
       <section className="space-y-4">
@@ -472,29 +527,28 @@ export default function FeedPage() {
         )}
 
         {error && (
-          <div className="rounded-xl bg-red-50 p-6 text-center ring-1 ring-red-100">
-            <AlertCircle className="mx-auto h-8 w-8 text-red-500" />
-            <p className="mt-2 text-sm font-bold text-red-600">Failed to load posts</p>
-          </div>
+          <Alert variant="destructive">
+            <AlertCircle className="h-8 w-8" />
+            <AlertDescription className="text-sm font-bold">Failed to load posts</AlertDescription>
+          </Alert>
         )}
 
         <div className="grid gap-6">
-          {(data ?? []).length === 0 && !isLoading && !error && (
-            <div className="rounded-xl bg-white p-12 text-center shadow-sm ring-1 ring-slate-200">
-              <p className="text-slate-500">No updates to show right now.</p>
-            </div>
+          {posts.length === 0 && !isLoading && !error && (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <p className="text-muted-foreground">No updates to show right now.</p>
+              </CardContent>
+            </Card>
           )}
 
-          {(data ?? []).map((post) => (
-            <article
-              key={post.id}
-              className="group overflow-hidden rounded-none border-x-0 border-y border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm transition-all hover:bg-slate-50/50 dark:hover:bg-slate-800/50 sm:rounded-[20px] sm:border"
-            >
-              <div className="p-4 pb-4 sm:p-6 sm:pb-4">
+          {posts.map((post: Post) => (
+            <Card key={post.id} className="group overflow-hidden transition-all hover:bg-accent/50">
+              <CardContent className="p-4 pb-4 sm:p-6 sm:pb-4">
                 <div className="mb-4 flex items-start justify-between">
                   <div className="flex gap-4">
                     {post.author_role === "admin" ? (
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-bold text-sm shadow-md overflow-hidden">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-sm shadow-md overflow-hidden">
                         {post.profiles?.avatar ? (
                           <img src={getAvatarUrl(post.profiles.avatar)!} alt="" className="h-full w-full object-cover" />
                         ) : (
@@ -502,7 +556,7 @@ export default function FeedPage() {
                         )}
                       </div>
                     ) : (
-                      <Link href={`/profile/${post.user_id}`} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-bold text-sm shadow-md transition-transform hover:scale-105 overflow-hidden">
+                      <Link href={`/profile/${post.user_id}`} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-sm shadow-md transition-transform hover:scale-105 overflow-hidden">
                         {post.profiles?.avatar ? (
                           <img src={getAvatarUrl(post.profiles.avatar)!} alt="" className="h-full w-full object-cover" />
                         ) : (
@@ -527,7 +581,7 @@ export default function FeedPage() {
                         )}
                         <div className="mt-0.5 flex items-center gap-1.5 text-slate-400">
                           <AlertCircle className="h-3.5 w-3.5" /> 
-                          <span className="text-[13px] font-medium">• {post.purpose || "General"}</span>
+                          <span className="text-[13px] font-medium">• {post.purpose === "shared_post" ? "Share a post" : post.purpose || "General"}</span>
                         </div>
                         <p className="mt-0.5 text-[12px] font-medium text-slate-400">
                           {post.created_at ? new Date(post.created_at).toLocaleString() : "Recently"}
@@ -536,70 +590,125 @@ export default function FeedPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <button className="text-slate-300 hover:text-slate-600">
+                    <Button variant="ghost" size="sm">
                       <MoreHorizontal className="h-5 w-5" />
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
                 <div className="mb-3 space-y-1">
-                  <div className="flex flex-wrap items-center gap-2 mb-1">
-                    <h2 className="text-[18px] font-extrabold text-slate-900 dark:text-white leading-tight tracking-tight">
-                      {post.title || "No Title"}
-                    </h2>
-                    {post.status === "resolved" && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2.5 py-0.5 text-[10px] font-bold text-white shadow-sm shrink-0">
-                        <CheckCircle2 className="h-3 w-3" />Resolved
-                      </span>
-                    )}
-                    {post.status === "in_progress" && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-teal-500 px-2.5 py-0.5 text-[10px] font-bold text-white shadow-sm shrink-0">
-                        <Loader2 className="h-3 w-3 animate-spin" />In Progress
-                      </span>
-                    )}
-                    {post.status === "pending" && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-orange-400 px-2.5 py-0.5 text-[10px] font-bold text-white shadow-sm shrink-0">
-                        Pending
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[15px] font-medium leading-relaxed text-slate-500/90 dark:text-slate-400">
-                    {post.description}
-                  </p>
-                </div>
+                  {/* Original Post Content (for shared posts) */}
+                  {post.purpose === "shared_post" && post.metadata ? (
+                    <div className="border-2 border-slate-200 dark:border-slate-700 rounded-xl p-4 bg-white dark:bg-slate-900">
+                      {/* Original Author Header */}
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+                          <UserIcon className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-900 dark:text-white">
+                            {post.metadata.original_author_name}
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            Original Post • {post.metadata.original_created_at ? 
+                              new Date(post.metadata.original_created_at).toLocaleDateString() : 
+                              'Recently'
+                            }
+                          </p>
+                        </div>
+                      </div>
 
-                {post.image && (
-                  <div
-                    className="mb-4 mt-4 overflow-hidden rounded-xl ring-1 ring-slate-100 dark:ring-slate-600 bg-slate-50 dark:bg-slate-800 cursor-zoom-in"
-                    onDoubleClick={() => setLightboxSrc(getStorageUrl(post.image!) || "")}
-                    onClick={() => setLightboxSrc(getStorageUrl(post.image!) || "")}
-                  >
-                    <img
-                      src={getStorageUrl(post.image) || ""}
-                      alt={post.title || ""}
-                      className="w-full object-contain pointer-events-none"
-                    />
-                  </div>
-                )}
-              </div>
+                      {/* Original Content */}
+                      {post.metadata.original_title && (
+                        <h2 className="text-[18px] font-extrabold text-slate-900 dark:text-white leading-tight tracking-tight mb-2">
+                          {post.metadata.original_title}
+                        </h2>
+                      )}
+                      {post.metadata.original_description && (
+                        <p className="text-[15px] font-medium leading-relaxed text-slate-500/90 dark:text-slate-400 mb-3">
+                          {post.metadata.original_description}
+                        </p>
+                      )}
+
+                      {/* Original Image */}
+                      {post.metadata?.original_image && (
+                        <div
+                          className="overflow-hidden rounded-xl border cursor-zoom-in"
+                          onDoubleClick={() => setLightboxSrc(getStorageUrl(post.metadata!.original_image!) || "")}
+                          onClick={() => setLightboxSrc(getStorageUrl(post.metadata!.original_image!) || "")}
+                        >
+                          <img
+                            src={getStorageUrl(post.metadata!.original_image) || ""}
+                            alt={post.metadata!.original_title || ""}
+                            className="w-full object-contain pointer-events-none bg-muted"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* Regular Post Content */
+                    <>
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <h2 className="text-[18px] font-extrabold text-slate-900 dark:text-white leading-tight tracking-tight">
+                          {post.title || "No Title"}
+                        </h2>
+                        {post.status === "resolved" && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2.5 py-0.5 text-[10px] font-bold text-white shadow-sm shrink-0">
+                            <CheckCircle2 className="h-3 w-3" />Resolved
+                          </span>
+                        )}
+                        {post.status === "in_progress" && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-teal-500 px-2.5 py-0.5 text-[10px] font-bold text-white shadow-sm shrink-0">
+                            <Loader2 className="h-3 w-3 animate-spin" />In Progress
+                          </span>
+                        )}
+                        {post.status === "pending" && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-orange-400 px-2.5 py-0.5 text-[10px] font-bold text-white shadow-sm shrink-0">
+                            Pending
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[15px] font-medium leading-relaxed text-slate-500/90 dark:text-slate-400">
+                        {post.description}
+                      </p>
+
+                      {post.image && (
+                        <div
+                          className="mb-4 mt-4 overflow-hidden rounded-xl border cursor-zoom-in"
+                          onDoubleClick={() => setLightboxSrc(getStorageUrl(post.image!) || "")}
+                          onClick={() => setLightboxSrc(getStorageUrl(post.image!) || "")}
+                        >
+                          <img
+                            src={getStorageUrl(post.image) || ""}
+                            alt={post.title || ""}
+                            className="w-full object-contain pointer-events-none bg-muted"
+                          />
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </CardContent>
 
               {post.status === "resolved" && (
-                <div className="mx-4 mb-1 flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-2.5 ring-1 ring-emerald-100">
-                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
-                  <div>
-                    <p className="text-[12px] font-bold text-emerald-700">{t("issue_resolved")}</p>
-                    <p className="text-[11px] text-emerald-600/70">{t("barangay_addressed")}</p>
-                  </div>
+                <div className="mx-4 mb-1">
+                  <Alert className="border-emerald-200 bg-emerald-50">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    <AlertDescription>
+                      <p className="text-xs font-bold text-emerald-700">{t("issue_resolved")}</p>
+                      <p className="text-xs text-emerald-600/70">{t("barangay_addressed")}</p>
+                    </AlertDescription>
+                  </Alert>
                 </div>
               )}
 
-              <div className="flex flex-col border-t border-slate-100 dark:border-slate-700 px-4 py-2 sm:px-6">
+              <div className="flex flex-col border-t px-4 py-2 sm:px-6">
                 {/* Count Row */}
-                <div className="flex justify-end border-b border-slate-50 pb-2 px-1">
+                <div className="flex justify-end border-b pb-2 px-1">
                   {post.comment_count > 0 && (
                     <button 
                       onClick={() => openComments(post.id)}
-                      className="text-[12px] font-medium text-slate-500 hover:underline"
+                      className="text-xs font-medium text-muted-foreground hover:underline"
                     >
                       {post.comment_count} {t("comments")}
                     </button>
@@ -614,7 +723,7 @@ export default function FeedPage() {
                       <div className="fixed inset-0 z-10" onClick={() => { setShowingEmojiFor(null); setHoveredEmoji(null); }} />
                       <div
                         ref={emojiPickerRef}
-                        className="absolute -top-16 left-0 z-20 flex items-end gap-1 rounded-full bg-white px-3 py-2.5 shadow-2xl ring-1 ring-slate-100"
+                        className="absolute -top-16 left-0 z-20 flex items-end gap-1 rounded-full bg-background px-3 py-2.5 shadow-2xl border"
                         style={{ animation: "scaleIn 0.15s ease-out" }}
                       >
                         {reactionEmojis.map((r) => (
@@ -649,12 +758,12 @@ export default function FeedPage() {
                       onTouchStart={(e) => { e.stopPropagation(); startLongPress(post.id); }}
                       onTouchMove={handleTouchMoveReaction}
                       onTouchEnd={(e) => handleTouchEndReaction(e, post.id)}
-                      className={`flex min-w-0 select-none items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-bold transition-all hover:bg-slate-50 sm:gap-2 sm:text-[14px] ${
-                        post.my_reaction ? "text-blue-600" : "text-[#65676B]"
+                      className={`flex min-w-0 select-none items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold transition-all hover:bg-accent sm:gap-2 sm:text-sm ${
+                        post.my_reaction ? "text-primary" : "text-muted-foreground"
                       }`}
                     >
                       {post.my_reaction ? (
-                        <span className="text-[18px] leading-none">
+                        <span className="text-lg leading-none">
                           {reactionEmojis.find(r => r.type === post.my_reaction)?.emoji ?? "👍"}
                         </span>
                       ) : (
@@ -665,7 +774,7 @@ export default function FeedPage() {
                       </span>
                     </button>
                   ) : (
-                    <Link href="/verify-account" className="flex min-w-0 select-none items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-bold text-slate-300 sm:gap-2 sm:text-[14px]" title="Verify your account to react">
+                    <Link href="/verify-account" className="flex min-w-0 select-none items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold text-muted-foreground sm:gap-2 sm:text-sm" title="Verify your account to react">
                       <ThumbsUp size={18} className="shrink-0" />
                       <span className="truncate">Like</span>
                     </Link>
@@ -675,13 +784,13 @@ export default function FeedPage() {
                   {me?.is_verified || me?.role === "admin" ? (
                     <button
                       onClick={() => openComments(post.id)}
-                      className="flex min-w-0 items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-bold text-[#65676B] transition-all hover:bg-slate-50 sm:gap-2 sm:text-[14px]"
+                      className="flex min-w-0 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold text-muted-foreground transition-all hover:bg-accent sm:gap-2 sm:text-sm"
                     >
                       <MessageCircle size={18} className="shrink-0" />
                       <span className="truncate">{t("comment")}</span>
                     </button>
                   ) : (
-                    <Link href="/verify-account" className="flex min-w-0 items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-bold text-slate-300 sm:gap-2 sm:text-[14px]" title="Verify your account to comment">
+                    <Link href="/verify-account" className="flex min-w-0 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold text-muted-foreground sm:gap-2 sm:text-sm" title="Verify your account to comment">
                       <MessageCircle size={18} className="shrink-0" />
                       <span className="truncate">{t("comment")}</span>
                     </Link>
@@ -689,14 +798,14 @@ export default function FeedPage() {
 
                   <button
                     onClick={() => handleShare(post.id)}
-                    className="flex min-w-0 items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-bold text-[#65676B] transition-all hover:bg-slate-50 sm:gap-2 sm:text-[14px]"
+                    className="flex min-w-0 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold text-muted-foreground transition-all hover:bg-accent sm:gap-2 sm:text-sm"
                   >
                     <ShareIcon className="h-[18px] w-[18px] shrink-0" />
                     <span className="truncate">{t("share")}</span>
                   </button>
                 </div>
               </div>
-            </article>
+            </Card>
           ))}
         </div>
       </section>
@@ -729,6 +838,26 @@ export default function FeedPage() {
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
               </div>
               <span className="text-[14px] font-semibold text-slate-700">{shareCopied ? "Link copied!" : "Copy Link"}</span>
+            </button>
+            
+            {/* Share on Feed */}
+            <button
+              onClick={handleShareToFeed}
+              disabled={isSharingToFeed || shareSuccess}
+              className="flex w-full items-center gap-3 rounded-2xl bg-blue-50 px-4 py-3.5 text-left transition-colors hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white">
+                {isSharingToFeed ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : shareSuccess ? (
+                  <CheckCircle2 className="h-5 w-5" />
+                ) : (
+                  <Share2 className="h-5 w-5" />
+                )}
+              </div>
+              <span className="text-[14px] font-semibold text-blue-700">
+                {isSharingToFeed ? "Sharing..." : shareSuccess ? "Shared to Feed!" : "Share on Feed"}
+              </span>
             </button>
             {/* Share on Facebook */}
             <a

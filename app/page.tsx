@@ -4,6 +4,12 @@ import { useState, FormEvent, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ShieldCheck, Users, Bell, MessageCircle, Calendar, ArrowRight, Star, MapPin, ChevronRight, Mail, Lock, X, Loader2, AlertTriangle, Megaphone } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const features = [
   { icon: AlertTriangle, title: "File Complaints", desc: "Report issues like road damage, noise, flooding, or illegal activities directly to barangay officials in seconds." },
@@ -217,13 +223,17 @@ export default function LandingPage() {
             {features.map((f) => {
               const Icon = f.icon;
               return (
-                <div key={f.title} className="rounded-2xl bg-slate-50 p-5 ring-1 ring-slate-100">
-                  <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-[#1e3a8a]">
-                    <Icon className="h-5 w-5 text-white" />
-                  </div>
-                  <h3 className="text-[15px] font-bold text-slate-900">{f.title}</h3>
-                  <p className="mt-1 text-[13px] leading-relaxed text-slate-500">{f.desc}</p>
-                </div>
+                <Card key={f.title} className="hover:shadow-lg transition-shadow">
+                  <CardHeader className="pb-3">
+                    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
+                      <Icon className="h-5 w-5 text-primary-foreground" />
+                    </div>
+                    <CardTitle className="text-base">{f.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <CardDescription className="text-sm leading-relaxed">{f.desc}</CardDescription>
+                  </CardContent>
+                </Card>
               );
             })}
           </div>
@@ -238,21 +248,23 @@ export default function LandingPage() {
 
           <div className="mt-6 space-y-4">
             {testimonials.map((t) => (
-              <div key={t.name} className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
-                <div className="mb-3 flex items-center gap-1">
-                  {[1, 2, 3, 4, 5].map((n) => <Star key={n} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />)}
-                </div>
-                <p className="text-[14px] italic leading-relaxed text-slate-600">&ldquo;{t.text}&rdquo;</p>
-                <div className="mt-3 flex items-center gap-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1e3a8a] text-xs font-bold text-white">
-                    {t.name.charAt(0)}
+              <Card key={t.name} className="shadow-sm">
+                <CardContent className="p-5">
+                  <div className="mb-3 flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((n) => <Star key={n} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />)}
                   </div>
-                  <div>
-                    <p className="text-[13px] font-bold text-slate-800">{t.name}</p>
-                    <p className="text-[11px] text-slate-400">{t.role} · Brgy. Pagatpatan</p>
+                  <p className="text-sm italic leading-relaxed text-muted-foreground">&ldquo;{t.text}&rdquo;</p>
+                  <div className="mt-3 flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                      {t.name.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold">{t.name}</p>
+                      <p className="text-xs text-muted-foreground">{t.role} · Brgy. Pagatpatan</p>
+                    </div>
                   </div>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </div>
@@ -289,13 +301,12 @@ export default function LandingPage() {
         <div className="mx-auto max-w-sm">
           <h2 className="text-[24px] font-black text-white">Have a concern?</h2>
           <p className="mt-2 text-[14px] text-blue-100">Register now for free and let your barangay know. Your complaints and concerns deserve to be heard.</p>
-          <Link
-            href="/register"
-            className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-white px-8 py-3.5 text-[15px] font-black text-[#1e3a8a] shadow-xl hover:bg-blue-50 transition-colors"
-          >
-            Register for Free
-            <ChevronRight className="h-4 w-4" />
-          </Link>
+          <Button asChild size="lg" className="bg-white text-[#1e3a8a] shadow-xl hover:bg-blue-50">
+            <Link href="/register">
+              Register for Free
+              <ChevronRight className="h-4 w-4 ml-2" />
+            </Link>
+          </Button>
           <p className="mt-3 text-[11px] text-blue-300/60">No payment required. Exclusive for Brgy. Pagatpatan residents.</p>
         </div>
       </section>

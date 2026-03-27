@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { Calendar, Clock, MapPin, Search } from "lucide-react";
+import { Calendar, Clock, MapPin, Search, Bookmark, Check, Users } from "lucide-react";
 import EventDetailModal from "./components/EventDetailModal";
 import { useT } from "@/lib/useT";
 
@@ -13,6 +13,10 @@ type Event = {
   location: string | null;
   event_date: string;
   image: string | null;
+  is_interested?: boolean;
+  saved_at?: string;
+  reminder_3d_sent?: boolean;
+  reminder_10h_sent?: boolean;
 };
 
 const fetcher = (url: string) => fetch(url).then((res) => {
@@ -38,6 +42,7 @@ function formatTime(d: string) {
 
 export default function EventsPage() {
   const { data: events, error, isLoading } = useSWR<Event[]>("/api/events", fetcher);
+  const { data: savedEvents, mutate: mutateSaved } = useSWR<Event[]>("/api/saved-events", fetcher);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const { t } = useT();
@@ -49,6 +54,84 @@ export default function EventsPage() {
       e.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       e.location?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Helper functions
+  const isEventSaved = (eventId: number) => {
+    return savedEvents?.some(event => event.id === eventId) || false;
+  };
+
+  const isEventInterested = (eventId: number) => {
+    return savedEvents?.some(event => event.id === eventId && event.is_interested) || false;
+  };
+
+  // Get interested status from API directly for all events
+  const { data: interestsData, mutate: mutateInterests } = useSWR(
+    eventsList.length > 0 ? `/api/event-interests?event_ids=${eventsList.map(e => e.id).join(',')}` : null,
+    fetcher
+  );
+
+  const isEventInterestedDirect = (eventId: number) => {
+    return interestsData?.interested_events?.includes(eventId) || false;
+  };
+
+  const handleSaveEvent = async (eventId: number) => {
+    try {
+      const response = await fetch("/api/saved-events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event_id: eventId, action: "save" }),
+      });
+
+      if (response.ok) {
+        mutateSaved(); // Refresh saved events data
+      }
+    } catch (error) {
+      console.error("Error saving event:", error);
+    }
+  };
+
+  const handleUnsaveEvent = async (eventId: number) => {
+    try {
+      const response = await fetch("/api/saved-events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event_id: eventId, action: "unsave" }),
+      });
+
+      if (response.ok) {
+        mutateSaved(); // Refresh saved events data
+      }
+    } catch (error) {
+      console.error("Error unsaving event:", error);
+    }
+  };
+
+  const handleToggleInterest = async (eventId: number, currentStatus: boolean) => {
+    try {
+      const response = await fetch("/api/event-interests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          event_id: eventId, 
+          action: currentStatus ? "not_interested" : "interested" 
+        }),
+      });
+
+      if (response.ok) {
+        // Refresh both data sources to ensure sync
+        mutateSaved(); // Refresh saved events data
+        mutateInterests(); // Refresh interests data
+      }
+    } catch (error) {
+      console.error("Error toggling interest:", error);
+    }
+  };
+
+  // Callback function to refresh data when modal actions are completed
+  const handleModalActionComplete = () => {
+    mutateSaved();
+    mutateInterests();
+  };
 
   return (
     <div>
@@ -131,12 +214,29 @@ export default function EventsPage() {
             <div className="mt-4 flex gap-2">
               <button
                 onClick={() => setSelectedEvent(event)}
-                className="rounded-xl border border-slate-200 dark:border-slate-600 px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                className="flex-1 rounded-lg border border-slate-200 dark:border-slate-600 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
               >
                 {t("view_details")}
               </button>
-              <button className="ml-auto rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-blue-700 transition-colors active:scale-95">
-                {t("im_interested")}
+              <button
+                onClick={() => handleToggleInterest(event.id, isEventInterestedDirect(event.id))}
+                className={`flex-1 flex items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-bold transition-colors active:scale-95 ${
+                  isEventInterestedDirect(event.id)
+                    ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+              >
+                {isEventInterestedDirect(event.id) ? (
+                  <>
+                    <Check className="h-3 w-3" />
+                    Interested
+                  </>
+                ) : (
+                  <>
+                    <Users className="h-3 w-3" />
+                    {t("im_interested")}
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -145,7 +245,11 @@ export default function EventsPage() {
 
       {/* Detail Modal */}
       {selectedEvent && (
-        <EventDetailModal event={selectedEvent} onClose={() => setSelectedEvent(null)} />
+        <EventDetailModal 
+          event={selectedEvent} 
+          onClose={() => setSelectedEvent(null)} 
+          onActionComplete={handleModalActionComplete}
+        />
       )}
     </div>
   );

@@ -17,6 +17,7 @@ import {
   Lock,
   MonitorX,
   ChevronRight,
+  Bookmark,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import useSWR from "swr";
@@ -29,8 +30,8 @@ const fetcher = (url: string) => fetch(url).then((res) => {
 
 // Inline translation maps for the layout
 const layoutT: Record<string, Record<string, string>> = {
-  en: { menu: "Menu", more: "More", home: "Home", events: "Events", notifications: "Notifications", profile: "Profile", alerts: "Alerts", settings: "Settings", help: "Help & Support", security: "Security", logout: "Logout", log_out_all: "Log out all devices", change_password: "Change Password" },
-  fil: { menu: "Menu", more: "Iba Pa", home: "Home", events: "Mga Kaganapan", notifications: "Mga Abiso", profile: "Profile", alerts: "Mga Alerto", settings: "Mga Setting", help: "Tulong at Suporta", security: "Seguridad", logout: "Mag-logout", log_out_all: "Mag-logout sa lahat ng device", change_password: "Baguhin ang Password" },
+  en: { menu: "Menu", more: "More", home: "Home", events: "Events", notifications: "Notifications", profile: "Profile", alerts: "Alerts", settings: "Settings", help: "Help & Support", security: "Security", logout: "Logout", log_out_all: "Log out all devices", change_password: "Change Password", saved_events: "Saved Events" },
+  fil: { menu: "Menu", more: "Iba Pa", home: "Home", events: "Mga Kaganapan", notifications: "Mga Abiso", profile: "Profile", alerts: "Mga Alerto", settings: "Mga Setting", help: "Tulong at Suporta", security: "Seguridad", logout: "Mag-logout", log_out_all: "Mag-logout sa lahat ng device", change_password: "Baguhin ang Password", saved_events: "Mga Nai-save na Kaganapan" },
 };
 
 export default function ResidentLayout({ children }: { children: ReactNode }) {
@@ -93,6 +94,7 @@ export default function ResidentLayout({ children }: { children: ReactNode }) {
   const navLinks = [
     { label: tl("home"), href: "/feed", icon: Home },
     { label: tl("events"), href: "/events", icon: Calendar },
+    { label: tl("saved_events"), href: "/saved", icon: Bookmark },
     { label: tl("notifications"), href: "/notifications", icon: Bell },
     { label: tl("profile"), href: "/profile/me", icon: User },
   ];

@@ -31,10 +31,18 @@ type Post = {
   status: string | null;
   created_at: string | null;
   image: string | null;
-  profiles: { name: string } | null;
+  profiles: { name: string; avatar?: string | null } | null;
   reaction_counts: Record<string, number>;
   my_reaction: string | null;
   comment_count: number;
+  metadata?: {
+    sharer_name?: string;
+    original_author_name?: string;
+    original_title?: string | null;
+    original_description?: string | null;
+    original_image?: string | null;
+    original_created_at?: string | null;
+  } | null;
 };
 
 const fetcher = (url: string) => fetch(url).then((res) => {
@@ -183,6 +191,12 @@ export default function AdminFeedPage() {
   const getStorageUrl = (path: string) => {
     if (!path) return null;
     return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/post-images/${path}`;
+  };
+
+  const getAvatarUrl = (path: string | null | undefined): string | null => {
+    if (!path) return null;
+    if (path.startsWith("http")) return path;
+    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${path}`;
   };
 
   return (
@@ -344,8 +358,12 @@ export default function AdminFeedPage() {
               <div className="p-4 pb-4 sm:p-6 sm:pb-4">
                 <div className="mb-4 flex items-start justify-between">
                   <div className="flex gap-4">
-                    <Link href={`/admin/users/${post.user_id}`} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-bold text-sm shadow-md transition-transform hover:scale-105">
-                      {(post.profiles?.name || "K").charAt(0)}
+                    <Link href={`/admin/users/${post.user_id}`} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-bold text-sm shadow-md transition-transform hover:scale-105 overflow-hidden">
+                      {post.profiles?.avatar ? (
+                        <img src={getAvatarUrl(post.profiles.avatar)!} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        (post.profiles?.name || "K").charAt(0)
+                      )}
                     </Link>
                     <div>
                       <div className="flex flex-col leading-tight">
@@ -357,7 +375,7 @@ export default function AdminFeedPage() {
                         </Link>
                         <div className="mt-0.5 flex items-center gap-1.5 text-slate-400">
                           <AlertCircle className="h-3.5 w-3.5" /> 
-                          <span className="text-[13px] font-medium">• {post.purpose || "General"}</span>
+                          <span className="text-[13px] font-medium">• {post.purpose === "shared_post" ? "Share a post" : post.purpose || "General"}</span>
                         </div>
                         <p className="mt-0.5 text-[12px] font-medium text-slate-400">
                           {post.created_at ? new Date(post.created_at).toLocaleString() : "Recently"}
@@ -377,23 +395,64 @@ export default function AdminFeedPage() {
                   </div>
                 </div>
 
-                <div className="mb-4 space-y-1">
-                  <h2 className="text-[18px] font-extrabold text-slate-900 leading-tight tracking-tight">
-                    {post.title || "No Title"}
-                  </h2>
-                  <p className="text-[15px] font-medium leading-relaxed text-slate-500/90">
-                    {post.description}
-                  </p>
-                </div>
-
-                {post.image && (
-                  <div className="mb-4 mt-4 overflow-hidden rounded-xl ring-1 ring-slate-100">
-                    <img 
-                      src={getStorageUrl(post.image) || ""} 
-                      alt={post.title || ""} 
-                      className="w-full object-contain"
-                    />
+                {post.purpose === "shared_post" && post.metadata ? (
+                  <div className="border-2 border-slate-200 dark:border-slate-700 rounded-xl p-4 bg-white dark:bg-slate-900 mb-4">
+                    {/* Original Author Header */}
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+                        <UserIcon className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-slate-900 dark:text-white">
+                          {post.metadata.original_author_name}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Original Post • {post.metadata.original_created_at ? 
+                            new Date(post.metadata.original_created_at).toLocaleDateString() : 
+                            'Recently'
+                          }
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Original Post Content */}
+                    <h2 className="text-[18px] font-extrabold text-slate-900 leading-tight tracking-tight">
+                      {post.metadata.original_title || "No Title"}
+                    </h2>
+                    <p className="text-[15px] font-medium leading-relaxed text-slate-500/90">
+                      {post.metadata.original_description}
+                    </p>
+                    {post.metadata.original_image && (
+                      <div className="mt-3 overflow-hidden rounded-xl">
+                        <img 
+                          src={getStorageUrl(post.metadata.original_image) || ""} 
+                          alt={post.metadata.original_title || ""} 
+                          className="w-full object-cover max-h-80"
+                        />
+                      </div>
+                    )}
                   </div>
+                ) : (
+                  <>
+                    <div className="mb-4 space-y-1">
+                      <h2 className="text-[18px] font-extrabold text-slate-900 leading-tight tracking-tight">
+                        {post.title || "No Title"}
+                      </h2>
+                      <p className="text-[15px] font-medium leading-relaxed text-slate-500/90">
+                        {post.description}
+                      </p>
+                    </div>
+
+                    {post.image && (
+                      <div className="mb-4 mt-4 overflow-hidden rounded-xl ring-1 ring-slate-100">
+                        <img 
+                          src={getStorageUrl(post.image) || ""} 
+                          alt={post.title || ""} 
+                          className="w-full object-contain"
+                        />
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
