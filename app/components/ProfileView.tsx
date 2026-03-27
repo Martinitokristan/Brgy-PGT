@@ -45,6 +45,14 @@ type Post = {
   comment_count: number;
   reaction_counts: Record<string, number>;
   my_reaction: string | null;
+  metadata?: {
+    sharer_name?: string;
+    original_author_name?: string;
+    original_title?: string | null;
+    original_description?: string | null;
+    original_image?: string | null;
+    original_created_at?: string | null;
+  } | null;
 };
 
 type ProfileData = {
