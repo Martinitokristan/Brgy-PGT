@@ -43,9 +43,14 @@ function formatTime(d: string) {
 function formatSavedDate(d: string) {
   const date = new Date(d);
   const now = new Date();
-  const diffTime = Math.abs(now.getTime() - date.getTime());
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
+  if (diffMins < 1) return "Saved just now";
+  if (diffMins < 60) return `Saved ${diffMins} minute${diffMins === 1 ? "" : "s"} ago`;
+  if (diffHours < 24) return `Saved ${diffHours} hour${diffHours === 1 ? "" : "s"} ago`;
   if (diffDays === 1) return "Saved yesterday";
   if (diffDays < 7) return `Saved ${diffDays} days ago`;
   return `Saved on ${formatDate(d)}`;

@@ -30,41 +30,35 @@ export async function GET() {
 
     const postList = postsRaw ?? [];
 
-    // Batch-fetch profiles for all post authors
+    // Batch-fetch profiles, reactions, and comments IN PARALLEL
     const userIds = [...new Set(postList.map((p: any) => p.user_id).filter(Boolean))];
-    const profileMap: Record<string, { name: string | null; avatar: string | null; role: string | null }> = {};
-        if (userIds.length > 0) {
-      const { data: profiles, error: profileError } = await service
-        .from("profiles")
-        .select("id, name, avatar, role")
-        .in("id", userIds);
-                  for (const p of profiles ?? []) {
-        profileMap[p.id] = { name: p.name, avatar: p.avatar, role: p.role };
-      }
-    }
-
-    // Batch-fetch reactions for all posts
     const postIds = postList.map((p: any) => p.id);
+    const profileMap: Record<string, { name: string | null; avatar: string | null; role: string | null }> = {};
     const reactionsMap: Record<number, { type: string; user_id: string }[]> = {};
     const commentsCountMap: Record<number, number> = {};
 
-    if (postIds.length > 0) {
-      const { data: reactions } = await service
-        .from("reactions")
-        .select("post_id, type, user_id")
-        .in("post_id", postIds);
-      for (const r of reactions ?? []) {
-        if (!reactionsMap[r.post_id]) reactionsMap[r.post_id] = [];
-        reactionsMap[r.post_id].push(r);
-      }
+    // Run all 3 queries in parallel instead of sequentially
+    const [profilesResult, reactionsResult, commentsResult] = await Promise.all([
+      userIds.length > 0
+        ? service.from("profiles").select("id, name, avatar, role").in("id", userIds)
+        : Promise.resolve({ data: [], error: null }),
+      postIds.length > 0
+        ? service.from("reactions").select("post_id, type, user_id").in("post_id", postIds)
+        : Promise.resolve({ data: [], error: null }),
+      postIds.length > 0
+        ? service.from("comments").select("id, post_id").in("post_id", postIds)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
 
-      const { data: comments } = await service
-        .from("comments")
-        .select("id, post_id")
-        .in("post_id", postIds);
-      for (const c of comments ?? []) {
-        commentsCountMap[c.post_id] = (commentsCountMap[c.post_id] ?? 0) + 1;
-      }
+    for (const p of profilesResult.data ?? []) {
+      profileMap[p.id] = { name: p.name, avatar: p.avatar, role: p.role };
+    }
+    for (const r of reactionsResult.data ?? []) {
+      if (!reactionsMap[r.post_id]) reactionsMap[r.post_id] = [];
+      reactionsMap[r.post_id].push(r);
+    }
+    for (const c of commentsResult.data ?? []) {
+      commentsCountMap[c.post_id] = (commentsCountMap[c.post_id] ?? 0) + 1;
     }
 
     // Transform data to include counts and user status

@@ -28,26 +28,33 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const { data: me } = useSWR("/api/profile?action=me", fetcher);
+  const { data: me } = useSWR("/api/profile?action=me", fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 10000,
+  });
   const { data: notifData } = useSWR("/api/notifications?action=unread_count", countFetcher, {
-    refreshInterval: 15000, // poll every 15 seconds for real-time feel
+    refreshInterval: 60000,
+    revalidateOnFocus: false,
+    dedupingInterval: 30000,
   });
   const unreadCount: number = notifData?.count ?? 0;
 
   useEffect(() => {
-    async function checkRole() {
-      const res = await fetch("/api/profile?action=me");
-      if (res.ok) {
-        const data = await res.json();
-        if (data.role !== "admin") {
-          router.push("/feed");
-        }
-      } else {
-        router.push("/");
-      }
+    if (!me) return;
+    if (me.role !== "admin") {
+      router.push("/feed");
     }
-    void checkRole();
-  }, [router]);
+  }, [me, router]);
+
+  // Admin panel always runs in light mode regardless of resident dark-mode preference
+  useEffect(() => {
+    const html = document.documentElement;
+    const wasDark = html.classList.contains("dark");
+    html.classList.remove("dark");
+    return () => {
+      if (wasDark) html.classList.add("dark");
+    };
+  }, []);
 
 
   const menuGroups = [

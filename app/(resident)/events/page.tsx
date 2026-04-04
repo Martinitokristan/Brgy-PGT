@@ -41,8 +41,14 @@ function formatTime(d: string) {
 }
 
 export default function EventsPage() {
-  const { data: events, error, isLoading } = useSWR<Event[]>("/api/events", fetcher);
-  const { data: savedEvents, mutate: mutateSaved } = useSWR<Event[]>("/api/saved-events", fetcher);
+  const { data: events, error, isLoading } = useSWR<Event[]>("/api/events", fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 5000,
+  });
+  const { data: savedEvents, mutate: mutateSaved } = useSWR<Event[]>("/api/saved-events", fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 5000,
+  });
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const { t } = useT();
@@ -67,7 +73,8 @@ export default function EventsPage() {
   // Get interested status from API directly for all events
   const { data: interestsData, mutate: mutateInterests } = useSWR(
     eventsList.length > 0 ? `/api/event-interests?event_ids=${eventsList.map(e => e.id).join(',')}` : null,
-    fetcher
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 5000 }
   );
 
   const isEventInterestedDirect = (eventId: number) => {

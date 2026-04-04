@@ -327,7 +327,7 @@ export default function LandingPage() {
             </div>
           </div>
           <p className="mt-4 text-[11px] text-slate-300">
-            © 2026 Barangay Pagatpatan, Cagayan de Oro City. All rights reserved.
+            © 2026 Barangay Pagatpatan, Butuan City. All rights reserved.
           </p>
         </div>
       </footer>

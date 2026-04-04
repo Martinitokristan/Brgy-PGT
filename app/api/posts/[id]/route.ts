@@ -111,7 +111,11 @@ export async function POST(request: Request, props: Params) {
     return NextResponse.json({ error: "Invalid id" }, { status: 400 });
   }
 
-  const user = await getAuthUser();
+  // Parse body and auth in parallel to save time
+  const [user, body] = await Promise.all([
+    getAuthUser(),
+    request.json().catch(() => null),
+  ]);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   // Check if user is verified (or admin)
@@ -128,8 +132,6 @@ export async function POST(request: Request, props: Params) {
       { status: 403 }
     );
   }
-
-  const body = await request.json().catch(() => null);
   const action = body?.action as string | undefined;
 
   if (action === "comment") return handleAddComment(id, user.id, body);
@@ -213,6 +215,41 @@ async function handleCommentLike(userId: string, body: any) {
   return NextResponse.json(data);
 }
 
+// PUT /api/posts/:id - edit post content (owner only)
+export async function PUT(request: Request, props: Params) {
+  const service = createSupabaseServiceClient();
+  const { id: idStr } = await props.params;
+  const id = Number(idStr);
+
+  const user = await getAuthUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { data: post } = await service
+    .from("posts")
+    .select("user_id")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (post.user_id !== user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const body = await request.json();
+  const { title, description, purpose, urgency_level } = body;
+
+  if (!title?.trim()) return NextResponse.json({ error: "Title is required" }, { status: 400 });
+
+  const { error } = await service
+    .from("posts")
+    .update({ title: title.trim(), description: description?.trim() ?? null, purpose: purpose ?? "general", urgency_level: urgency_level ?? "low", updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Post edit error:", error);
+    return NextResponse.json({ error: "Update failed" }, { status: 500 });
+  }
+  return NextResponse.json({ ok: true });
+}
+
 // DELETE /api/posts/:id - delete post (admin or owner)
 export async function DELETE(_request: Request, props: Params) {
   const service = createSupabaseServiceClient();
@@ -279,6 +316,13 @@ export async function PATCH(request: Request, props: Params) {
     updates.responded_at = new Date().toISOString();
   }
 
+  // Get post owner before updating
+  const { data: existingPost } = await service
+    .from("posts")
+    .select("user_id, title, status")
+    .eq("id", id)
+    .maybeSingle();
+
   const { error } = await service
     .from("posts")
     .update(updates)
@@ -288,6 +332,30 @@ export async function PATCH(request: Request, props: Params) {
     console.error("Post update error:", error);
     return NextResponse.json({ error: "Update failed" }, { status: 500 });
   }
+
+  // Send in-app notification to post owner when status changes
+  if (existingPost && status && status !== existingPost.status && existingPost.user_id !== user.id) {
+    const statusLabels: Record<string, string> = {
+      pending: "Pending",
+      in_progress: "In Progress",
+      resolved: "Resolved",
+    };
+    const statusLabel = statusLabels[status] ?? status;
+    const notifMessage = admin_response
+      ? `Your post "${existingPost.title || "Untitled"}" has been updated to ${statusLabel}. Admin says: ${admin_response}`
+      : `Your post "${existingPost.title || "Untitled"}" has been updated to ${statusLabel}.`;
+
+    const { error: notifError } = await service.from("notifications").insert({
+      user_id: existingPost.user_id,
+      type: "post_status_update",
+      title: `Post ${statusLabel}`,
+      message: notifMessage,
+      post_id: id,
+      is_read: false,
+    });
+    if (notifError) console.error("Notification insert error:", notifError);
+  }
+
   return NextResponse.json({ ok: true });
 }
 

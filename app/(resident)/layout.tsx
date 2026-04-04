@@ -39,7 +39,10 @@ export default function ResidentLayout({ children }: { children: ReactNode }) {
   const [showSecurityMenu, setShowSecurityMenu] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
-  const { data: me, error } = useSWR("/api/profile?action=me", fetcher);
+  const { data: me, error } = useSWR("/api/profile?action=me", fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 10000,
+  });
 
   // Guard: if fetcher returns error (e.g. 401), redirect back to home.
   useEffect(() => {
@@ -181,7 +184,7 @@ export default function ResidentLayout({ children }: { children: ReactNode }) {
           )}
 
           {/* — Menu Label — */}
-          <p className="px-5 pt-5 pb-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">
+          <p className="px-5 pt-5 pb-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">
             {tl("menu")}
           </p>
 
@@ -198,12 +201,12 @@ export default function ResidentLayout({ children }: { children: ReactNode }) {
                   onClick={() => setIsSidebarOpen(false)}
                   className={`group flex items-center justify-between rounded-xl px-3 py-2.5 text-[14px] font-semibold transition-all ${
                     isActive
-                      ? "bg-blue-50 text-blue-700"
-                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                      ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"
+                      : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <Icon className={`h-5 w-5 shrink-0 ${isActive ? "text-blue-600" : "text-slate-400 group-hover:text-slate-600"}`} />
+                    <Icon className={`h-5 w-5 shrink-0 ${isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300"}`} />
                     <span>{item.label}</span>
                   </div>
                   {isActive && <div className="h-2 w-2 rounded-full bg-blue-600" />}
@@ -213,7 +216,7 @@ export default function ResidentLayout({ children }: { children: ReactNode }) {
 
             {/* — Divider + More section — */}
             <div className="pt-3 pb-1">
-              <p className="px-2 pb-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">
+              <p className="px-2 pb-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">
                 {tl("more")}
               </p>
             </div>
@@ -222,9 +225,9 @@ export default function ResidentLayout({ children }: { children: ReactNode }) {
             <Link
               href="/settings"
               onClick={() => setIsSidebarOpen(false)}
-              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all"
+              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all"
             >
-              <Settings className="h-5 w-5 text-slate-400" />
+              <Settings className="h-5 w-5 text-slate-400 dark:text-slate-500" />
               {tl("settings")}
             </Link>
 
@@ -232,9 +235,9 @@ export default function ResidentLayout({ children }: { children: ReactNode }) {
             <Link
               href="/help"
               onClick={() => setIsSidebarOpen(false)}
-              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all"
+              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all"
             >
-              <HelpCircle className="h-5 w-5 text-slate-400" />
+              <HelpCircle className="h-5 w-5 text-slate-400 dark:text-slate-500" />
               {tl("help")}
             </Link>
 
@@ -242,9 +245,9 @@ export default function ResidentLayout({ children }: { children: ReactNode }) {
             <div>
               <button
                 onClick={() => setShowSecurityMenu((v) => !v)}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all"
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all"
               >
-                <Lock className="h-5 w-5 text-slate-400" />
+                <Lock className="h-5 w-5 text-slate-400 dark:text-slate-500" />
                 <span className="flex-1 text-left">{tl("security")}</span>
                 <ChevronRight className={`h-4 w-4 text-slate-300 transition-transform ${showSecurityMenu ? "rotate-90" : ""}`} />
               </button>
@@ -278,10 +281,10 @@ export default function ResidentLayout({ children }: { children: ReactNode }) {
           </nav>
 
           {/* Logout at bottom */}
-          <div className="border-t border-slate-100 px-3 py-4">
+          <div className="border-t border-slate-100 dark:border-slate-700 px-3 py-4">
             <button
               onClick={handleLogout}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-bold text-red-600 hover:bg-red-50 transition-all"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
             >
               <LogOut className="h-5 w-5" />
               {tl("logout")}

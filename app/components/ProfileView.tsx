@@ -30,6 +30,7 @@ import {
   User,
 } from "lucide-react";
 import CommentDrawer from "@/app/components/ui/CommentDrawer";
+import { PostStatusBadge } from "@/app/components/post/PostStatusBadge";
 import { useT } from "@/lib/useT";
 
 type Post = {
@@ -122,8 +123,14 @@ function formatPhoneForDisplay(raw: string | null | undefined) {
 }
 
 export default function ProfileView({ userId }: { userId: string }) {
-  const { data: profile, mutate, isLoading: profileLoading } = useSWR<ProfileData>(userId ? `/api/profile/${userId}` : null, fetcher);
-  const { data: me } = useSWR("/api/profile?action=me", fetcher);
+  const { data: profile, mutate, isLoading: profileLoading } = useSWR<ProfileData>(userId ? `/api/profile/${userId}` : null, fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 5000,
+  });
+  const { data: me } = useSWR("/api/profile?action=me", fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 10000,
+  });
   const { t } = useT();
   const { toasts, addToast } = useToast();
   
@@ -685,13 +692,11 @@ export default function ProfileView({ userId }: { userId: string }) {
                           </div>
                         )}
                         {post.status && (
-                          <div className="inline-flex items-center rounded-full bg-slate-50 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 ring-1 ring-slate-100">
-                             {post.status}
-                          </div>
+                          <PostStatusBadge status={post.status} />
                         )}
                       </div>
                       {post.purpose === "shared_post" && post.metadata ? (
-                        <div className="border-2 border-slate-200 dark:border-slate-700 rounded-xl p-4 bg-white dark:bg-slate-900">
+                        <div className="border border-slate-200 dark:border-slate-600 rounded-xl p-4 bg-slate-50 dark:bg-slate-800/60">
                           {/* Original Author Header */}
                           <div className="flex items-center gap-3 mb-3">
                             <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
