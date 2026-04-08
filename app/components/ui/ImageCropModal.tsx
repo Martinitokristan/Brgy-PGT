@@ -72,11 +72,12 @@ export default function ImageCropModal(props: {
   if (!isOpen || !file || !imageUrl) return null;
 
   async function handleSave() {
-    if (!croppedAreaPixels || isSaving) return;
+    if (!croppedAreaPixels || isSaving || !imageUrl) return;
+    const imageSrc = imageUrl;
     setIsSaving(true);
     try {
       const blob = await cropImageToBlob({
-        imageSrc: imageUrl,
+        imageSrc,
         cropAreaPixels: croppedAreaPixels,
         mimeType: "image/jpeg",
         quality: 0.9,
