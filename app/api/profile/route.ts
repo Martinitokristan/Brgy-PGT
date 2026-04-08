@@ -36,7 +36,7 @@ async function handleGetMe() {
   const { data, error } = await service
     .from("profiles")
     .select(
-      "id, name, email, role, is_approved, is_verified, barangay_id, phone, purok_address, sex, birth_date, age, avatar, cover_photo"
+      "id, name, email, role, is_approved, is_verified, barangay_id, phone, purok_address, sex, birth_date, age, avatar, cover_photo, autoplay_videos"
     )
     .eq("id", user.id)
     .maybeSingle();
@@ -125,12 +125,16 @@ async function handleUpdateMe(request: Request) {
   }
 
   const updates: Record<string, any> = {};
-  const textFields = ["phone", "purok_address", "sex", "birth_date", "age"];
+  const textFields = ["phone", "purok_address", "sex", "birth_date", "age", "autoplay_videos"];
 
   for (const field of textFields) {
     const value = formData.get(field);
     if (value !== null) {
-      updates[field] = value;
+      if (field === "autoplay_videos") {
+        updates[field] = String(value) === "true";
+      } else {
+        updates[field] = value;
+      }
     }
   }
 

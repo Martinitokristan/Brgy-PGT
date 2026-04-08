@@ -1,51 +1,16 @@
 "use client";
 
-import { useState, useMemo, FormEvent } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useParams, useSearchParams } from "next/navigation";
 import useSWR from "swr";
-import { 
-  ArrowLeft, 
-  MessageCircle, 
-  Share2, 
-  ThumbsUp, 
-  Smile, 
-  Send, 
-  Loader2,
-  AlertCircle,
-  MapPin,
-  Calendar,
-  MoreHorizontal
-} from "lucide-react";
-import CommentItem from "./components/CommentItem";
-
-type Post = {
-  id: number;
-  user_id: string;
-  title: string | null;
-  description: string | null;
-  purpose: string | null;
-  urgency_level: string | null;
-  status: string | null;
-  image: string | null;
-  profiles: { name: string } | null;
-  created_at: string | null;
-};
-
-type Comment = {
-  id: number;
-  post_id: number;
-  user_id: string;
-  parent_id: number | null;
-  body: string;
-  liked_by: string[];
-  profiles: { name: string } | null;
-  created_at: string;
-};
-
-type ReactionSummary = {
-  counts: Record<string, number>;
-  myReaction: string | null;
-};
+import { AlertCircle } from "lucide-react";
+import ImageLightbox from "@/app/components/ui/ImageLightbox";
+import VideoLightbox from "@/app/components/ui/VideoLightbox";
+import CommentDrawer from "@/app/components/ui/CommentDrawer";
+import { PostCard } from "@/app/components/post/PostCard";
+import { ReactionBar } from "@/app/components/post/ReactionBar";
+import { ShareModal } from "@/app/components/post/ShareModal";
+import { Post } from "@/lib/types";
 
 const fetcher = (url: string) => fetch(url).then((res) => {
   if (!res.ok) throw new Error("Failed to fetch");
@@ -53,342 +18,173 @@ const fetcher = (url: string) => fetch(url).then((res) => {
 });
 
 export default function PostDetailPage() {
-  const router = useRouter();
+  const searchParams = useSearchParams();
   const params = useParams<{ id: string }>();
-  const id = params?.id;
+  const rawId = Number(params?.id);
+  const postId = Number.isFinite(rawId) ? rawId : null;
+  const highlightCommentId = (() => {
+    const v = Number(searchParams?.get("comment_id"));
+    return Number.isFinite(v) && v > 0 ? v : null;
+  })();
   
   const { data: me } = useSWR("/api/profile?action=me", fetcher);
-  const { data: post, error: postError, isLoading: postLoading } = useSWR<Post>(id ? `/api/posts/${id}` : null, fetcher);
-  const { data: comments, mutate: mutateComments } = useSWR<Comment[]>(id ? `/api/posts/${id}?action=comments` : null, fetcher);
-  const { data: reactions, mutate: mutateReactions } = useSWR<ReactionSummary>(id ? `/api/posts/${id}?action=reactions` : null, fetcher);
+  const { data: post, isLoading, error, mutate } = useSWR<Post>(
+    postId ? `/api/posts/${postId}` : null,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 5000 }
+  );
 
-  const [newComment, setNewComment] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [replyTarget, setReplyTarget] = useState<{ id: number; name: string } | null>(null);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const fromPolicyViolation = searchParams?.get("reason") === "policy_violation";
 
-  const thread = useMemo(() => {
-    const byParent: Record<string, Comment[]> = {};
-    (comments ?? []).forEach(c => {
-      const key = String(c.parent_id ?? "root");
-      if (!byParent[key]) byParent[key] = [];
-      byParent[key].push(c);
-    });
-    return byParent;
-  }, [comments]);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [videoLightboxSrc, setVideoLightboxSrc] = useState<string | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [showingEmojiFor, setShowingEmojiFor] = useState<number | null>(null);
 
-  const handleAddComment = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!newComment.trim() || isSubmitting) return;
+  // Share modal state (same behavior as feed)
+  const [sharePostId, setSharePostId] = useState<number | null>(null);
+  const [shareCopied, setShareCopied] = useState(false);
+  const [isSharingToFeed, setIsSharingToFeed] = useState(false);
+  const [shareSuccess, setShareSuccess] = useState(false);
 
-    setIsSubmitting(true);
-    try {
-      const res = await fetch(`/api/posts/${id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          action: "comment",
-          body: newComment.trim(),
-          parent_id: replyTarget?.id ?? null 
-        }),
-      });
-
-      if (res.ok) {
-        setNewComment("");
-        setReplyTarget(null);
-        mutateComments();
-      }
-    } finally {
-      setIsSubmitting(false);
+  // Open comments automatically when coming from notifications
+  useEffect(() => {
+    if (searchParams?.get("focus") === "comments") {
+      setIsDrawerOpen(true);
     }
-  };
+  }, [searchParams]);
 
-  const handleUpdateComment = async (commentId: number, body: string) => {
-    const res = await fetch(`/api/posts/comments/${commentId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body }),
-    });
-    if (res.ok) mutateComments();
-  };
+  const canInteract = !!(me?.is_verified || me?.role === "admin");
 
-  const handleDeleteComment = async (commentId: number) => {
-    const res = await fetch(`/api/posts/comments/${commentId}`, { method: "DELETE" });
-    if (res.ok) mutateComments();
-  };
+  const optimisticReact = async (idToReact: number, type: string) => {
+    mutate((current) => {
+      if (!current) return current;
+      if (current.id !== idToReact) return current;
 
-  const handleLikeComment = async (commentId: number) => {
-    await fetch(`/api/posts/${id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "comment_like", comment_id: commentId }) });
-    mutateComments();
-  };
+      const counts = { ...(current.reaction_counts ?? {}) } as Record<string, number>;
+      const prev = current.my_reaction ?? null;
 
-  const handleReact = async (type: string) => {
-    await fetch(`/api/posts/${id}`, {
+      if (prev) {
+        counts[prev] = Math.max((counts[prev] ?? 1) - 1, 0);
+        if (counts[prev] === 0) delete counts[prev];
+      }
+
+      const next = prev === type ? null : type;
+      if (next) counts[next] = (counts[next] ?? 0) + 1;
+
+      return { ...current, my_reaction: next, reaction_counts: counts };
+    }, { revalidate: false });
+
+    void fetch(`/api/posts/${idToReact}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "reaction", type }),
     });
-    mutateReactions();
   };
 
-  const handleShare = () => {
-    const url = window.location.href;
-    if (navigator.share) {
-      navigator.share({ title: post?.title || "Post", url });
-    } else {
-      navigator.clipboard.writeText(url);
-      alert("Link copied!");
+  const handleShare = (pid: number) => {
+    setSharePostId(pid);
+    setShareCopied(false);
+  };
+
+  const handleShareToFeed = async () => {
+    if (!sharePostId) return;
+    setIsSharingToFeed(true);
+    try {
+      const response = await fetch("/api/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ original_post_id: sharePostId }),
+      });
+      if (response.ok) {
+        setShareSuccess(true);
+        setTimeout(() => {
+          setSharePostId(null);
+          setShareSuccess(false);
+        }, 1500);
+      }
+    } finally {
+      setIsSharingToFeed(false);
     }
   };
 
-  const reactionEmojis: Record<string, string> = {
-    like: "👍",
-    heart: "❤️",
-    support: "🤝",
-    sad: "😢"
+  const closeShareModal = () => {
+    setSharePostId(null);
+    setShareCopied(false);
+    setShareSuccess(false);
   };
 
-  if (postLoading) return (
-    <div className="flex min-h-screen items-center justify-center">
-      <Loader2 className="animate-spin text-blue-600" size={32} />
-    </div>
-  );
+  if (isLoading) {
+    return <div className="mx-auto w-full max-w-5xl px-0 sm:px-4 py-10" />;
+  }
 
-  return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 lg:px-8 bg-slate-50/30">
-      {/* Navigation */}
-      <button 
-        onClick={() => router.back()}
-        className="mb-8 flex items-center gap-2 text-sm font-bold text-slate-500 transition-colors hover:text-slate-900 group"
-      >
-        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-slate-200 transition-transform group-hover:-translate-x-1">
-          <ArrowLeft size={16} />
-        </div>
-        Back to Feed
-      </button>
-
-      <div className="grid gap-8 lg:grid-cols-3">
-        {/* Main Post Content */}
-        <div className="lg:col-span-2 space-y-6">
-          <article className="overflow-hidden rounded-[32px] bg-white shadow-xl shadow-slate-200/50 ring-1 ring-slate-200">
-            {post?.image && (
-              <div className="relative aspect-video w-full overflow-hidden bg-slate-100">
-                <img 
-                  src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/post-images/${post.image}`}
-                  alt={post.title || "Post image"}
-                  className="h-full w-full object-cover"
-                />
-              </div>
-            )}
-
-            <div className="p-8 sm:p-10">
-              <div className="mb-6 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-lg font-bold text-white shadow-lg shadow-blue-500/20">
-                    {post?.profiles?.name?.charAt(0).toUpperCase() || "B"}
-                  </div>
-                  <div>
-                    <h3 className="text-base font-black text-slate-900 leading-none">
-                      {post?.profiles?.name || "Barangay Resident"}
-                    </h3>
-                    <p className="mt-1 text-xs font-bold text-slate-400">
-                      {post?.created_at ? new Date(post.created_at).toLocaleDateString("en-US", { month: 'long', day: 'numeric', year: 'numeric' }) : "Recently"}
-                    </p>
-                  </div>
-                </div>
-                
-                <button className="rounded-xl p-2 text-slate-300 hover:bg-slate-50 hover:text-slate-600">
-                  <MoreHorizontal size={20} />
-                </button>
-              </div>
-
-              <h1 className="text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
-                {post?.title}
-              </h1>
-              
-              <p className="mt-6 text-lg leading-relaxed text-slate-600">
-                {post?.description}
-              </p>
-
-              {/* Urgency & Status Badges */}
-              <div className="mt-8 flex flex-wrap gap-3">
-                 {post?.urgency_level && (
-                   <div className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold ring-1 ${
-                     post.urgency_level === 'high' ? 'bg-red-50 text-red-600 ring-red-100' : 'bg-amber-50 text-amber-600 ring-amber-100'
-                   }`}>
-                     <AlertCircle size={14} />
-                     <span className="uppercase tracking-wider">{post.urgency_level} Priority</span>
-                   </div>
-                 )}
-                 {post?.status && (
-                   <div className="flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-600 ring-1 ring-emerald-100">
-                     <span className="uppercase tracking-wider">{post.status}</span>
-                   </div>
-                 )}
-              </div>
-
-              {/* Big Interaction Buttons */}
-              <div className="mt-10 flex items-center gap-3 border-t border-slate-100 pt-8">
-                <div className="flex grow items-center gap-2 overflow-x-auto rounded-2xl bg-slate-50 p-2 no-scrollbar">
-                  {Object.entries(reactionEmojis).map(([type, emoji]) => {
-                    const count = reactions?.counts?.[type] ?? 0;
-                    const active = reactions?.myReaction === type;
-                    return (
-                      <button
-                        key={type}
-                        onClick={() => handleReact(type)}
-                        className={`flex min-w-[64px] flex-col items-center justify-center gap-1 rounded-xl p-3 transition-all ${
-                          active ? "bg-white text-blue-600 shadow-md ring-1 ring-blue-100" : "text-slate-400 hover:bg-white hover:text-slate-600"
-                        }`}
-                      >
-                        <span className="text-xl">{emoji}</span>
-                        <span className="text-[10px] font-black uppercase tracking-widest">{count}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                
-                <button 
-                  onClick={handleShare}
-                  className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-xl shadow-indigo-500/30 transition-all hover:bg-indigo-700 active:scale-95"
-                >
-                  <Share2 size={24} />
-                </button>
-              </div>
-            </div>
-          </article>
-
-          {/* Comments Section */}
-          <div className="space-y-6">
-            <div className="flex items-center justify-between px-4">
-              <h2 className="flex items-center gap-3 text-xl font-black text-slate-900">
-                <MessageCircle size={24} className="text-blue-600" />
-                Comments
-                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">
-                  {comments?.length || 0}
-                </span>
-              </h2>
-            </div>
-
-            <div className="rounded-[32px] bg-white p-6 shadow-lg shadow-slate-200/40 ring-1 ring-slate-200 sm:p-8">
-              {/* Comment Input */}
-              <div className="mb-10">
-                {replyTarget && (
-                  <div className="mb-3 flex items-center justify-between rounded-xl bg-blue-50 px-4 py-2 text-xs font-bold text-blue-600">
-                     <span>Replying to <span className="font-black underline">{replyTarget.name}</span></span>
-                     <button onClick={() => setReplyTarget(null)} className="rounded-full p-1 hover:bg-blue-100">
-                       <ArrowLeft size={14} className="rotate-90" />
-                     </button>
-                  </div>
-                )}
-                <form onSubmit={handleAddComment} className="relative flex items-center gap-4">
-                  <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 sm:flex">
-                     {me?.profile?.name?.charAt(0).toUpperCase() || me?.name?.charAt(0).toUpperCase() || "U"}
-                  </div>
-                  <div className="relative flex-1">
-                    <input 
-                      type="text"
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      placeholder={replyTarget ? `Write a reply...` : "Add a comment..."}
-                      className="w-full rounded-2xl border-0 bg-slate-50 px-6 py-4 text-sm font-medium text-slate-900 shadow-inner ring-1 ring-slate-200 transition-all focus:bg-white focus:ring-2 focus:ring-blue-600/20"
-                    />
-                    <button 
-                      type="button"
-                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                      className="absolute right-14 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors"
-                    >
-                      <Smile size={20} />
-                    </button>
-                    <button 
-                      type="submit"
-                      disabled={!newComment.trim() || isSubmitting}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-500/20 transition-all hover:bg-blue-700 active:scale-90 disabled:opacity-50 disabled:shadow-none"
-                    >
-                      {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Send size={18} />}
-                    </button>
-                    {showEmojiPicker && (
-                      <div className="absolute bottom-full right-0 mb-4 flex gap-2 rounded-2xl bg-white p-3 shadow-2xl ring-1 ring-slate-200 z-50">
-                        {["👍", "❤️", "😂", "😮", "😢", "🔥"].map(e => (
-                          <button key={e} onClick={() => { setNewComment(p => p + e); setShowEmojiPicker(false); }} className="text-xl transition-transform hover:scale-125">{e}</button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </form>
-              </div>
-
-              {/* Comments List */}
-              <div className="space-y-2">
-                {(thread["root"] ?? []).map(comment => (
-                  <CommentItem 
-                    key={comment.id}
-                    comment={comment}
-                    me={me}
-                    replies={thread[String(comment.id)]}
-                    onReply={(cid, name) => {
-                      setReplyTarget({ id: cid, name });
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
-                    onLike={handleLikeComment}
-                    onDelete={handleDeleteComment}
-                    onUpdate={handleUpdateComment}
-                  />
-                ))}
-                
-                {(!comments || comments.length === 0) && (
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-50 text-slate-200">
-                      <MessageCircle size={32} />
-                    </div>
-                    <p className="text-sm font-bold text-slate-400">Be the first to comment on this post.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Sidebar Info */}
-        <div className="space-y-6">
-          <div className="rounded-[32px] bg-white p-8 shadow-lg shadow-slate-200/40 ring-1 ring-slate-200">
-            <h3 className="mb-6 text-xs font-black uppercase tracking-[0.2em] text-blue-600">Post Info</h3>
-            <div className="space-y-6">
-              <div className="flex items-start gap-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                  <Calendar size={18} />
-                </div>
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Posted On</p>
-                  <p className="text-sm font-bold text-slate-900">
-                    {post?.created_at ? new Date(post.created_at).toLocaleString() : "Recently"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
-                  <MapPin size={18} />
-                </div>
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Location</p>
-                  <p className="text-sm font-bold text-slate-900">Brgy. Pagatpatan</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-                  <AlertCircle size={18} />
-                </div>
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Post ID</p>
-                  <p className="text-sm font-bold text-slate-900">#{post?.id}</p>
-                </div>
-              </div>
-            </div>
+  if (error || !post) {
+    return (
+      <div className="mx-auto w-full max-w-5xl px-4 py-10">
+        <div className="rounded-2xl bg-white dark:bg-slate-900 p-6 ring-1 ring-slate-200 dark:ring-slate-800">
+          <div className="flex items-center gap-3 text-slate-700 dark:text-slate-200">
+            <AlertCircle className="h-5 w-5 text-red-500" />
+            <p className="text-sm font-bold">Failed to load this post.</p>
           </div>
         </div>
       </div>
-    </div>
+    );
+  }
+
+  return (
+    <>
+      {lightboxSrc && <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
+      {videoLightboxSrc && <VideoLightbox src={videoLightboxSrc} onClose={() => setVideoLightboxSrc(null)} />}
+
+      <div className="mx-auto w-full max-w-5xl space-y-4 px-0 sm:px-4">
+        {fromPolicyViolation && (
+          <div className="mx-4 sm:mx-0 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] font-semibold text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-100">
+            Your comment was flagged for prohibited words. This is the post where it happened.
+          </div>
+        )}
+
+        <PostCard
+          post={post}
+          variant="resident"
+          onImageClick={setLightboxSrc}
+          onVideoClick={setVideoLightboxSrc}
+          isOwn={post.user_id === me?.id}
+          autoplayVideos={me?.autoplay_videos ?? true}
+          onToggleAutoplayVideos={async (nextValue) => {
+            const fd = new FormData();
+            fd.append("autoplay_videos", String(nextValue));
+            await fetch("/api/profile", { method: "PATCH", body: fd });
+          }}
+        >
+          <ReactionBar
+            post={post}
+            onReact={optimisticReact}
+            onComment={() => setIsDrawerOpen(true)}
+            onShare={handleShare}
+            isVerified={canInteract}
+            variant="resident"
+            showEmojiPicker={showingEmojiFor === post.id}
+            onEmojiPickerToggle={setShowingEmojiFor}
+          />
+        </PostCard>
+      </div>
+
+      <CommentDrawer
+        postId={postId}
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        me={me}
+        highlightCommentId={highlightCommentId}
+      />
+
+      <ShareModal
+        sharePostId={sharePostId}
+        shareCopied={shareCopied}
+        isSharingToFeed={isSharingToFeed}
+        shareSuccess={shareSuccess}
+        onClose={closeShareModal}
+        onShareToFeed={handleShareToFeed}
+      />
+    </>
   );
 }

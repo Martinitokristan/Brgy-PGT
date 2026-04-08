@@ -43,13 +43,13 @@ export function SharedPostContent({ metadata, onImageClick }: SharedPostContentP
       {/* Original Image */}
       {metadata.original_image && (
         <div
-          className="overflow-hidden rounded-xl border cursor-zoom-in"
+          className="overflow-hidden rounded-xl border cursor-zoom-in bg-slate-100 dark:bg-slate-800"
           onClick={() => onImageClick?.(getStorageUrl(metadata.original_image!) || "")}
         >
           <img
             src={getStorageUrl(metadata.original_image) || ""}
             alt={metadata.original_title || ""}
-            className="w-full object-contain pointer-events-none bg-muted"
+            className="w-full max-h-[520px] object-contain pointer-events-none"
           />
         </div>
       )}

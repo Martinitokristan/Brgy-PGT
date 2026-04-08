@@ -34,10 +34,13 @@ export function ReactionBar({
   // Track which emoji is currently highlighted during drag
   const [draggedOver, setDraggedOver] = useState<string | null>(null);
 
-  // Pointer event refs
+  // Pointer/drag refs (Facebook style: tap = Like, hold = open picker, drag = choose)
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLongPress = useRef(false);
+  const isPointerDown = useRef(false);
+  const didMove = useRef(false);
+  const startPoint = useRef<{ x: number; y: number } | null>(null);
   const capturedPointerId = useRef<number | null>(null);
 
   const openPicker = () => {
@@ -59,20 +62,34 @@ export function ReactionBar({
 
   const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
     if (variant !== "resident") return;
+    // Prevent iOS "touch callout" / text selection on press-and-hold.
+    e.preventDefault();
+
+    isPointerDown.current = true;
     isLongPress.current = false;
+    didMove.current = false;
+    startPoint.current = { x: e.clientX, y: e.clientY };
+
     // Store refs before setTimeout (currentTarget becomes null after handler returns)
     const el = e.currentTarget;
     const pointerId = e.pointerId;
     longPressTimer.current = setTimeout(() => {
+      if (!isPointerDown.current) return;
       isLongPress.current = true;
       openPicker();
       // Capture so we keep receiving pointermove even outside the button
       try { el.setPointerCapture(pointerId); } catch {}
       capturedPointerId.current = pointerId;
-    }, 500);
+    }, 350);
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!isPointerDown.current) return;
+    if (startPoint.current) {
+      const dx = Math.abs(e.clientX - startPoint.current.x);
+      const dy = Math.abs(e.clientY - startPoint.current.y);
+      if (dx + dy > 6) didMove.current = true;
+    }
     if (!isLongPress.current) return;
     const reaction = getReactionAt(e.clientX, e.clientY);
     setDraggedOver(reaction);
@@ -81,28 +98,35 @@ export function ReactionBar({
   const handlePointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
 
-    if (isLongPress.current) {
-      // Long-press released: select the emoji under the pointer
+    const wasLongPress = isLongPress.current;
+    isPointerDown.current = false;
+
+    if (wasLongPress) {
+      // Long-press released: select the emoji under the pointer (if any)
       const reaction = getReactionAt(e.clientX, e.clientY);
       if (reaction) {
         onReact(post.id, reaction);
         closePicker();
       } else {
-        // Released outside picker — just close
         closePicker();
       }
       isLongPress.current = false;
       capturedPointerId.current = null;
     } else {
-      // Short tap: toggle picker open/closed
-      if (!showEmojiPicker) openPicker();
-      else closePicker();
+      // Short tap: behave like Facebook (toggle Like)
+      onReact(post.id, "like");
     }
+
+    didMove.current = false;
+    startPoint.current = null;
   };
 
   const handlePointerCancel = () => {
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    isPointerDown.current = false;
     isLongPress.current = false;
+    didMove.current = false;
+    startPoint.current = null;
     capturedPointerId.current = null;
     setDraggedOver(null);
   };
@@ -176,9 +200,15 @@ export function ReactionBar({
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerCancel}
+            onContextMenu={(e) => e.preventDefault()}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
-            style={{ touchAction: "none" }}
+            style={{
+              touchAction: "none",
+              WebkitTouchCallout: "none",
+              WebkitUserSelect: "none",
+              userSelect: "none",
+            }}
             className={`flex min-w-0 select-none items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold transition-all hover:bg-accent sm:gap-2 sm:text-sm ${
               post.my_reaction ? "text-primary" : "text-muted-foreground"
             }`}
@@ -190,7 +220,7 @@ export function ReactionBar({
             ) : (
               <ThumbsUp size={18} className="shrink-0" />
             )}
-            <span className="truncate capitalize">
+            <span className="truncate capitalize pointer-events-none">
               {post.my_reaction
                 ? (REACTION_EMOJIS.find(r => r.type === post.my_reaction)?.label ?? "Like")
                 : "Like"}

@@ -17,6 +17,7 @@ import { usePostForm } from "@/hooks/usePostForm";
 
 // UI components
 import CommentDrawer from "@/app/components/ui/CommentDrawer";
+import VideoLightbox from "@/app/components/ui/VideoLightbox";
 
 const fetcher = (url: string) => fetch(url).then((res) => {
   if (!res.ok) throw new Error("Failed to fetch");
@@ -30,7 +31,7 @@ const ShareIcon = ({ className = "h-5 w-5" }: { className?: string }) => (
 );
 
 export default function AdminFeedPage() {
-  const { data: me } = useSWR("/api/profile?action=me", fetcher, {
+  const { data: me, mutate: mutateMe } = useSWR("/api/profile?action=me", fetcher, {
     revalidateOnFocus: false,
     dedupingInterval: 10000,
   });
@@ -45,11 +46,19 @@ export default function AdminFeedPage() {
   const realtime = useFeedRealtime({ mutate });
   const postForm = usePostForm();
 
+  const handleToggleAutoplay = async (nextValue: boolean) => {
+    const fd = new FormData();
+    fd.append("autoplay_videos", String(nextValue));
+    await fetch("/api/profile", { method: "PATCH", body: fd });
+    void mutateMe();
+  };
+
   // Local state
   const [isExpanding, setIsExpanding] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
   const [statusModal, setStatusModal] = useState<Post | null>(null);
+  const [videoLightboxSrc, setVideoLightboxSrc] = useState<string | null>(null);
   const [newStatus, setNewStatus] = useState("pending");
   const [adminResponse, setAdminResponse] = useState("");
 
@@ -94,6 +103,9 @@ export default function AdminFeedPage() {
 
   return (
     <>
+      {videoLightboxSrc && (
+        <VideoLightbox src={videoLightboxSrc} onClose={() => setVideoLightboxSrc(null)} />
+      )}
       {/* Create Post Modal */}
       <PostForm
         isOpen={isExpanding}
@@ -106,8 +118,8 @@ export default function AdminFeedPage() {
         userName={me?.name || "Admin"}
         variant="admin"
         formState={postForm}
-        onImageSelect={postForm.handleImageSelect}
-        onRemoveImage={postForm.removeImage}
+        onMediaSelect={postForm.handleMediaSelect}
+        onRemoveMedia={postForm.removeMedia}
         fileInputRef={postForm.fileInputRef}
       />
 
@@ -160,6 +172,9 @@ export default function AdminFeedPage() {
                 post={post}
                 variant="admin"
                 isAdmin={true}
+                autoplayVideos={me?.autoplay_videos ?? true}
+                onToggleAutoplayVideos={handleToggleAutoplay}
+                onVideoClick={setVideoLightboxSrc}
                 onDelete={handleDeletePost}
                 onStatusUpdate={(p) => { setStatusModal(p); setNewStatus(p.status || "pending"); setAdminResponse(""); }}
               >

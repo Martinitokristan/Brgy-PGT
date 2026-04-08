@@ -11,6 +11,7 @@ export type Post = {
   status: string | null;
   created_at: string | null;
   image: string | null;
+  video?: string | null;
   profiles: { name: string; avatar?: string | null } | null;
   author_role: string | null;
   reaction_counts: Record<string, number>;
@@ -76,8 +77,9 @@ export type PostFormState = {
   description: string;
   purpose: string;
   urgency: string;
-  selectedImage: File | null;
-  imagePreview: string | null;
+  selectedMedia: File | null;
+  mediaPreview: string | null;
+  mediaType: "image" | "video" | null;
   isSubmitting: boolean;
   uploadProgress: number;
   setTitle: (value: string) => void;

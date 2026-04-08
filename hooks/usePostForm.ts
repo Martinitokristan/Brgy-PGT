@@ -8,8 +8,9 @@ export function usePostForm() {
     description: "",
     purpose: "general",
     urgency: "low",
-    selectedImage: null,
-    imagePreview: null,
+    selectedMedia: null,
+    mediaPreview: null,
+    mediaType: null,
     isSubmitting: false,
     uploadProgress: 0,
     setTitle: (value: string) => setFormState(prev => ({ ...prev, title: value })),
@@ -18,23 +19,31 @@ export function usePostForm() {
     setUrgency: (value: string) => setFormState(prev => ({ ...prev, urgency: value })),
   });
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMediaSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setFormState(prev => ({ ...prev, selectedImage: file }));
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormState(prev => ({ ...prev, imagePreview: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
+      const type = (file.type || "").startsWith("video/") ? "video" : "image";
+      setFormState(prev => ({ ...prev, selectedMedia: file, mediaType: type }));
+
+      if (type === "image") {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setFormState(prev => ({ ...prev, mediaPreview: reader.result as string }));
+        };
+        reader.readAsDataURL(file);
+      } else {
+        const url = URL.createObjectURL(file);
+        setFormState(prev => ({ ...prev, mediaPreview: url }));
+      }
     }
   };
 
-  const removeImage = () => {
+  const removeMedia = () => {
     setFormState(prev => ({ 
       ...prev, 
-      selectedImage: null, 
-      imagePreview: null 
+      selectedMedia: null,
+      mediaPreview: null,
+      mediaType: null,
     }));
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -62,8 +71,9 @@ export function usePostForm() {
             description: "",
             purpose: "general",
             urgency: "low",
-            selectedImage: null,
-            imagePreview: null,
+            selectedMedia: null,
+            mediaPreview: null,
+            mediaType: null,
             isSubmitting: false,
             uploadProgress: 0,
           }));
@@ -86,8 +96,8 @@ export function usePostForm() {
   return {
     ...formState,
     fileInputRef,
-    handleImageSelect,
-    removeImage,
+    handleMediaSelect,
+    removeMedia,
     handleSubmit,
   };
 }

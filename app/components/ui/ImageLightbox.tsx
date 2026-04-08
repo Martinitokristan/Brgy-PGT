@@ -81,13 +81,16 @@ export default function ImageLightbox({ src, alt, onClose }: ImageLightboxProps)
   }
 
   function handleTouchMove(e: React.TouchEvent) {
-    e.preventDefault();
+    // Only prevent default when the user is actively zooming/panning the image.
+    // This preserves native browser back-swipe gestures on iOS/Android.
     if (e.touches.length === 2 && pinchStart.current !== null) {
+      e.preventDefault();
       // Pinch zoom
       const dist = getTouchDist(e);
       const newScale = Math.max(0.5, Math.min(5, pinchScaleStart.current * (dist / pinchStart.current)));
       setScale(newScale);
     } else if (e.touches.length === 1 && isDragging && scale > 1) {
+      e.preventDefault();
       // Pan
       const touch = e.touches[0];
       const nx = touch.clientX - dragStart.current.x;

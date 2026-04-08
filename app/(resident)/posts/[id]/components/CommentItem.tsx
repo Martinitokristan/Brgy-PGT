@@ -84,23 +84,23 @@ export default function CommentItem({
       <div className="flex gap-4">
         {/* Avatar */}
         <div className="relative flex-shrink-0">
-          <div className={`flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 text-sm font-bold text-slate-600 shadow-sm ${depth > 0 ? "h-8 w-8 text-xs" : ""}`}>
+          <div className={`flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 text-sm font-bold text-slate-600 dark:text-slate-200 shadow-sm ${depth > 0 ? "h-8 w-8 text-xs" : ""}`}>
             {comment.profiles?.name?.charAt(0).toUpperCase() || "U"}
           </div>
           {depth > 0 && (
-            <div className="absolute -left-6 top-4 h-px w-6 bg-slate-200" />
+            <div className="absolute -left-6 top-4 h-px w-6 bg-slate-200 dark:bg-slate-700" />
           )}
         </div>
 
         {/* Content Box */}
         <div className="flex-1 min-w-0">
           <div className="relative">
-            <div className={`rounded-[24px] px-5 py-3 transition-colors ${isOwn ? "bg-blue-50/50 ring-1 ring-blue-100" : "bg-slate-50 ring-1 ring-slate-100"}`}>
+            <div className={`rounded-[24px] px-5 py-3 transition-colors ${isOwn ? "bg-blue-50/50 dark:bg-blue-950/30 ring-1 ring-blue-100 dark:ring-blue-900/40" : "bg-slate-50 dark:bg-slate-800 ring-1 ring-slate-100 dark:ring-slate-700"}`}>
               <div className="flex items-center justify-between gap-2 mb-1">
-                <span className="text-xs font-black text-slate-900 truncate">
+                <span className="text-xs font-black text-slate-900 dark:text-slate-100 truncate">
                   {comment.profiles?.name || "Anonymous Resident"}
                 </span>
-                <span className="text-[10px] font-bold text-slate-400">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">
                    {new Date(comment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
@@ -110,19 +110,19 @@ export default function CommentItem({
                   <textarea
                     value={editText}
                     onChange={(e) => setEditText(e.target.value)}
-                    className="w-full rounded-xl border-0 bg-white p-3 text-sm text-slate-900 shadow-inner ring-1 ring-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
+                    className="w-full rounded-xl border-0 bg-white dark:bg-slate-900 p-3 text-sm text-slate-900 dark:text-slate-100 shadow-inner ring-1 ring-slate-200 dark:ring-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
                     rows={2}
                     autoFocus
                   />
                   <div className="mt-2 flex items-center justify-between">
                     <button 
                       onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                      className="text-slate-400 hover:text-blue-600 transition-colors"
+                      className="text-slate-400 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                     >
                       <Smile size={18} />
                     </button>
                     {showEmojiPicker && (
-                      <div className="absolute bottom-full left-0 mb-2 flex gap-1 rounded-full bg-white p-2 shadow-xl ring-1 ring-slate-200 z-10">
+                      <div className="absolute bottom-full left-0 mb-2 flex gap-1 rounded-full bg-white dark:bg-slate-900 p-2 shadow-xl ring-1 ring-slate-200 dark:ring-slate-700 z-10">
                         {emojis.map(e => (
                           <button key={e} onClick={() => addEmoji(e)} className="hover:scale-125 transition-transform p-1">{e}</button>
                         ))}
@@ -131,7 +131,7 @@ export default function CommentItem({
                     <div className="flex gap-2">
                       <button 
                         onClick={() => setIsEditing(false)}
-                        className="rounded-lg bg-slate-100 p-1.5 text-slate-500 hover:bg-slate-200"
+                        className="rounded-lg bg-slate-100 dark:bg-slate-800 p-1.5 text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
                       >
                         <X size={16} />
                       </button>
@@ -146,7 +146,7 @@ export default function CommentItem({
                   </div>
                 </div>
               ) : (
-                <p className="text-sm leading-relaxed text-slate-700 whitespace-pre-line">
+                <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-200 whitespace-pre-line">
                   {comment.body}
                 </p>
               )}
@@ -155,16 +155,16 @@ export default function CommentItem({
             {/* Actions Popover */}
             {isOwn && !isEditing && (
               <div className="absolute -right-2 top-0 translate-x-full opacity-0 group-hover:opacity-100 transition-opacity">
-                <div className="flex flex-col gap-1 rounded-xl bg-white p-1 shadow-lg ring-1 ring-slate-200">
+                <div className="flex flex-col gap-1 rounded-xl bg-white dark:bg-slate-900 p-1 shadow-lg ring-1 ring-slate-200 dark:ring-slate-700">
                   <button 
                     onClick={() => setIsEditing(true)}
-                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                    className="p-2 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-all"
                   >
                     <Pencil size={14} />
                   </button>
                   <button 
                     onClick={() => setIsDeleteDialogOpen(true)}
-                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-all"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -178,7 +178,7 @@ export default function CommentItem({
             <button 
               onClick={() => onLike(comment.id)}
               className={`flex items-center gap-1.5 text-[11px] font-bold transition-colors ${
-                isLiked ? "text-blue-600" : "text-slate-500 hover:text-blue-600"
+                isLiked ? "text-blue-600 dark:text-blue-400" : "text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400"
               }`}
             >
               <ThumbsUp size={14} fill={isLiked ? "currentColor" : "none"} />
@@ -188,20 +188,20 @@ export default function CommentItem({
             
             <button 
               onClick={() => onReply(comment.id, comment.profiles?.name || "Resident")}
-              className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 hover:text-blue-600 transition-colors"
+              className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
             >
               <Reply size={14} />
               <span>Reply</span>
             </button>
 
-            <span className="text-[10px] font-semibold text-slate-300">
+            <span className="text-[10px] font-semibold text-slate-300 dark:text-slate-600">
               {new Date(comment.created_at).toLocaleDateString()}
             </span>
           </div>
 
           {/* Nested Replies */}
           {replies.length > 0 && (
-            <div className="relative mt-2 ml-2 border-l-2 border-slate-100 pl-2">
+            <div className="relative mt-2 ml-2 border-l-2 border-slate-100 dark:border-slate-800 pl-2">
               {replies.map(reply => (
                 <CommentItem 
                   key={reply.id}

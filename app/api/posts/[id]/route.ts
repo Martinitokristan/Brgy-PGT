@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServiceClient } from "@/lib/supabaseService";
 import { getAuthUser } from "@/lib/getUser";
+import { detectProfanity } from "@/lib/profanity";
 
 type Params = {
   params: Promise<{
@@ -26,10 +27,12 @@ export async function GET(request: Request, props: Params) {
 
 async function handleGetPost(id: number) {
   const service = createSupabaseServiceClient();
+  const user = await getAuthUser();
+  const userId = user?.id ?? null;
 
   const { data: post, error } = await service
     .from("posts")
-    .select("id,title,description,purpose,urgency_level,status,created_at,barangay_id,user_id,image,admin_response,responded_at")
+    .select("*, original_post_id, metadata")
     .eq("id", id)
     .maybeSingle();
 
@@ -39,21 +42,50 @@ async function handleGetPost(id: number) {
   }
   if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const { data: profile } = await service
-    .from("profiles")
-    .select("name, avatar")
-    .eq("id", post.user_id)
-    .maybeSingle();
+  const [{ data: profile }, { data: reactions }, { data: comments }] = await Promise.all([
+    service
+      .from("profiles")
+      .select("name, avatar, role")
+      .eq("id", post.user_id)
+      .maybeSingle(),
+    service
+      .from("reactions")
+      .select("user_id, type")
+      .eq("post_id", id),
+    service
+      .from("comments")
+      .select("id", { count: "exact", head: true })
+      .eq("post_id", id),
+  ]);
 
-  return NextResponse.json({ ...post, profiles: profile ?? null }, { status: 200 });
+  const counts: Record<string, number> = {};
+  let myReaction: string | null = null;
+  for (const r of reactions ?? []) {
+    counts[r.type] = (counts[r.type] ?? 0) + 1;
+    if (userId && r.user_id === userId) myReaction = r.type;
+  }
+
+  return NextResponse.json(
+    {
+      ...post,
+      profiles: profile ?? null,
+      author_role: profile?.role ?? null,
+      reaction_counts: counts,
+      my_reaction: myReaction,
+      comment_count: (comments as any)?.count ?? 0,
+    },
+    { status: 200 }
+  );
 }
 
 async function handleGetComments(postId: number) {
   const service = createSupabaseServiceClient();
+  const user = await getAuthUser();
+  const userId = user?.id ?? null;
 
   const { data: comments, error } = await service
     .from("comments")
-    .select("id, post_id, user_id, parent_id, body, liked_by, created_at")
+    .select("id, post_id, user_id, parent_id, body, liked_by, created_at, is_hidden")
     .eq("post_id", postId)
     .order("created_at", { ascending: true });
 
@@ -62,7 +94,51 @@ async function handleGetComments(postId: number) {
     return NextResponse.json({ error: "Failed to fetch comments" }, { status: 500 });
   }
 
-  const commentList = comments ?? [];
+  const commentListRaw = comments ?? [];
+
+  // Visibility rules for hidden comments:
+  // - Admins: see all
+  // - Author: can see their own hidden comments
+  // - Other residents: hidden comments are excluded
+  let isAdmin = false;
+  if (userId) {
+    const { data: myProfile } = await service
+      .from("profiles")
+      .select("role")
+      .eq("id", userId)
+      .maybeSingle();
+    isAdmin = myProfile?.role === "admin";
+  }
+
+  const commentList = commentListRaw.filter((c: any) => {
+    if (!c?.is_hidden) return true;
+    if (isAdmin) return true;
+    if (userId && c.user_id === userId) return true;
+    return false;
+  });
+
+  // Optional: enrich with emoji reactions if `comment_reactions` table exists.
+  // Falls back to legacy `liked_by` if the table isn't present.
+  const commentIds = commentList.map((c: any) => c.id).filter(Boolean);
+  const reactionsByComment: Record<number, { user_id: string; type: string }[]> = {};
+  if (commentIds.length > 0) {
+    try {
+      const { data: commentReactions, error: reactionError } = await service
+        .from("comment_reactions")
+        .select("comment_id, user_id, type")
+        .in("comment_id", commentIds);
+
+      if (reactionError) throw reactionError;
+
+      for (const r of commentReactions ?? []) {
+        if (!reactionsByComment[r.comment_id]) reactionsByComment[r.comment_id] = [];
+        reactionsByComment[r.comment_id].push({ user_id: r.user_id, type: r.type });
+      }
+    } catch {
+      // Ignore and fall back to liked_by only
+    }
+  }
+
   const userIds = [...new Set(commentList.map((c: any) => c.user_id).filter(Boolean))];
   const profileMap: Record<string, { name: string | null }> = {};
   if (userIds.length > 0) {
@@ -74,7 +150,32 @@ async function handleGetComments(postId: number) {
   }
 
   return NextResponse.json(
-    commentList.map((c: any) => ({ ...c, profiles: profileMap[c.user_id] ?? null })),
+    commentList.map((c: any) => {
+      const reactions = reactionsByComment[c.id] ?? null;
+      if (reactions && reactions.length > 0) {
+        const counts: Record<string, number> = {};
+        let myReaction: string | null = null;
+        for (const r of reactions) {
+          counts[r.type] = (counts[r.type] ?? 0) + 1;
+          if (userId && r.user_id === userId) myReaction = r.type;
+        }
+        return {
+          ...c,
+          profiles: profileMap[c.user_id] ?? null,
+          reaction_counts: counts,
+          my_reaction: myReaction,
+        };
+      }
+
+      // Legacy fallback: treat `liked_by` as Like reactions.
+      const likedBy: string[] = c.liked_by || [];
+      return {
+        ...c,
+        profiles: profileMap[c.user_id] ?? null,
+        reaction_counts: likedBy.length > 0 ? { like: likedBy.length } : {},
+        my_reaction: userId && likedBy.includes(userId) ? "like" : null,
+      };
+    }),
     { status: 200 }
   );
 }
@@ -103,7 +204,7 @@ async function handleGetReactions(postId: number, request: Request) {
   return NextResponse.json({ counts, myReaction }, { status: 200 });
 }
 
-// POST /api/posts/:id  { action: "comment" | "reaction" | "comment_like" }
+// POST /api/posts/:id  { action: "comment" | "reaction" | "comment_like" | "comment_reaction" }
 export async function POST(request: Request, props: Params) {
   const { id: idStr } = await props.params;
   const id = Number(idStr);
@@ -137,6 +238,7 @@ export async function POST(request: Request, props: Params) {
   if (action === "comment") return handleAddComment(id, user.id, body);
   if (action === "reaction") return handleToggleReaction(id, user.id, body);
   if (action === "comment_like") return handleCommentLike(user.id, body);
+  if (action === "comment_reaction") return handleCommentReaction(user.id, body);
 
   return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });
 }
@@ -150,6 +252,82 @@ async function handleAddComment(postId: number, userId: string, body: any) {
     return NextResponse.json({ error: "Comment body is required." }, { status: 400 });
   }
 
+  // Restriction check (24h comment restriction)
+  const { data: p } = await service
+    .from("profiles")
+    .select("comment_restricted_until, profanity_violations")
+    .eq("id", userId)
+    .maybeSingle();
+  if (p?.comment_restricted_until) {
+    const until = new Date(p.comment_restricted_until).getTime();
+    if (Number.isFinite(until) && until > Date.now()) {
+      return NextResponse.json(
+        { error: "You are temporarily restricted from commenting. Please try again later." },
+        { status: 403 }
+      );
+    }
+  }
+
+  // Profanity enforcement (comments)
+  const prof = detectProfanity(commentBody);
+  if (prof) {
+    const prev = Number(p?.profanity_violations ?? 0);
+    const next = prev + 1;
+    const restrict = next >= 3;
+    const restrictedUntil = restrict ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() : null;
+
+    // Save the comment but hide it from other residents (visible to author + admins)
+    const { data: inserted, error: insertErr } = await service
+      .from("comments")
+      .insert({
+        post_id: postId,
+        user_id: userId,
+        parent_id: parentId ?? null,
+        body: commentBody.trim(),
+        is_hidden: true,
+        flag_reason: "profanity",
+        flagged_at: new Date().toISOString(),
+      })
+      .select("id, post_id, user_id, parent_id, body, created_at")
+      .maybeSingle();
+
+    if (insertErr) {
+      console.error(insertErr);
+      return NextResponse.json({ error: "Failed to add comment" }, { status: 500 });
+    }
+
+    await service
+      .from("profiles")
+      .update({
+        profanity_violations: next,
+        ...(restrict ? { comment_restricted_until: restrictedUntil } : {}),
+      })
+      .eq("id", userId);
+
+    await service.from("notifications").insert({
+      user_id: userId,
+      type: "policy_violation",
+      title: restrict ? "Comment restricted (24 hours)" : "Comment policy warning",
+      message: restrict
+        ? "Your comment contains prohibited words. Due to repeated violations, you are restricted from commenting for 24 hours."
+        : "Your comment contains prohibited words. Please keep the community respectful. Repeated violations may restrict your commenting privileges.",
+      post_id: postId,
+      comment_id: inserted?.id ?? null,
+      is_read: false,
+    });
+
+    await sendCommentActivityNotification(service, {
+      actorUserId: userId,
+      postId,
+      commentId: inserted?.id ?? null,
+      parentId: parentId ?? null,
+      commentBody: commentBody.trim(),
+    });
+
+    // Still return the created comment so the UI can show it to the author
+    return NextResponse.json(inserted, { status: 201 });
+  }
+
   const { data, error } = await service
     .from("comments")
     .insert({ post_id: postId, user_id: userId, parent_id: parentId ?? null, body: commentBody.trim() })
@@ -160,7 +338,73 @@ async function handleAddComment(postId: number, userId: string, body: any) {
     console.error(error);
     return NextResponse.json({ error: "Failed to add comment" }, { status: 500 });
   }
+
+  await sendCommentActivityNotification(service, {
+    actorUserId: userId,
+    postId,
+    commentId: data?.id ?? null,
+    parentId: parentId ?? null,
+    commentBody: commentBody.trim(),
+  });
+
   return NextResponse.json(data, { status: 201 });
+}
+
+async function sendCommentActivityNotification(
+  service: ReturnType<typeof createSupabaseServiceClient>,
+  params: {
+    actorUserId: string;
+    postId: number;
+    commentId: number | null;
+    parentId: number | null;
+    commentBody: string;
+  }
+) {
+  const { actorUserId, postId, commentId, parentId, commentBody } = params;
+  if (!commentId) return;
+
+  const [{ data: actor }, { data: post }] = await Promise.all([
+    service.from("profiles").select("name").eq("id", actorUserId).maybeSingle(),
+    service.from("posts").select("id, user_id, title").eq("id", postId).maybeSingle(),
+  ]);
+
+  const actorName = actor?.name || "Someone";
+  const postTitle = post?.title || "your post";
+
+  if (!parentId) {
+    // New top-level comment: notify post owner (if commenter isn't owner)
+    if (post?.user_id && post.user_id !== actorUserId) {
+      await service.from("notifications").insert({
+        user_id: post.user_id,
+        type: "post_comment",
+        title: "New comment on your post",
+        message: `${actorName} commented on your post "${postTitle}".`,
+        post_id: postId,
+        comment_id: commentId,
+        is_read: false,
+      });
+    }
+    return;
+  }
+
+  // Reply: notify parent comment author (if replier isn't parent author)
+  const { data: parent } = await service
+    .from("comments")
+    .select("id, user_id")
+    .eq("id", parentId)
+    .maybeSingle();
+
+  if (parent?.user_id && parent.user_id !== actorUserId) {
+    await service.from("notifications").insert({
+      user_id: parent.user_id,
+      type: "comment_reply",
+      title: "New reply to your comment",
+      message: `${actorName} replied to your comment: "${commentBody.slice(0, 80)}${commentBody.length > 80 ? "..." : ""}"`,
+      post_id: postId,
+      comment_id: commentId,
+      is_read: false,
+    });
+  }
 }
 
 async function handleToggleReaction(postId: number, userId: string, body: any) {
@@ -213,6 +457,63 @@ async function handleCommentLike(userId: string, body: any) {
 
   if (error) return NextResponse.json({ error: "Failed to update like" }, { status: 500 });
   return NextResponse.json(data);
+}
+
+async function handleCommentReaction(userId: string, body: any) {
+  const service = createSupabaseServiceClient();
+  const commentId = Number(body?.comment_id);
+  const type = body?.type as string | undefined;
+  if (!commentId || Number.isNaN(commentId)) {
+    return NextResponse.json({ error: "Invalid comment id" }, { status: 400 });
+  }
+
+  // If the reactions table is missing, fall back to legacy like/unlike.
+  // Non-like emoji types won't be persisted in legacy mode.
+  try {
+    const { data: existing } = await service
+      .from("comment_reactions")
+      .select("id, type")
+      .eq("comment_id", commentId)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    // Treat "unlike" (or missing type) as clear reaction
+    const wantsClear = !type || type === "unlike";
+    if (wantsClear) {
+      if (existing?.id) {
+        await service.from("comment_reactions").delete().eq("id", existing.id);
+      }
+    } else if (existing?.type === type) {
+      await service.from("comment_reactions").delete().eq("id", existing.id);
+    } else if (existing) {
+      await service.from("comment_reactions").update({ type }).eq("id", existing.id);
+    } else {
+      await service.from("comment_reactions").insert({ comment_id: commentId, user_id: userId, type });
+    }
+
+    const { data: all, error: allErr } = await service
+      .from("comment_reactions")
+      .select("user_id, type")
+      .eq("comment_id", commentId);
+    if (allErr) throw allErr;
+
+    const counts: Record<string, number> = {};
+    let myReaction: string | null = null;
+    for (const r of all ?? []) {
+      counts[r.type] = (counts[r.type] ?? 0) + 1;
+      if (r.user_id === userId) myReaction = r.type;
+    }
+    return NextResponse.json({ counts, myReaction }, { status: 200 });
+  } catch {
+    // Legacy fallback: only Like/Unlike
+    if (type && type !== "like" && type !== "unlike") {
+      // Best-effort: behave like Like (so UX still "does something")
+      await handleCommentLike(userId, { comment_id: commentId });
+    } else {
+      await handleCommentLike(userId, { comment_id: commentId });
+    }
+    return NextResponse.json({ ok: true, legacy: true }, { status: 200 });
+  }
 }
 
 // PUT /api/posts/:id - edit post content (owner only)

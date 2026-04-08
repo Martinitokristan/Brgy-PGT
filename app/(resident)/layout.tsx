@@ -22,6 +22,7 @@ import {
 import { useRouter, usePathname } from "next/navigation";
 import useSWR from "swr";
 import Link from "next/link";
+import { supabase } from "@/lib/supabaseClient";
 
 const fetcher = (url: string) => fetch(url).then((res) => {
   if (!res.ok) throw new Error("Failed to fetch");
@@ -43,6 +44,63 @@ export default function ResidentLayout({ children }: { children: ReactNode }) {
     revalidateOnFocus: false,
     dedupingInterval: 10000,
   });
+
+  const { data: unreadNotif, mutate: mutateUnreadNotif } = useSWR<{ count: number }>(
+    "/api/notifications?action=unread_count",
+    fetcher,
+    {
+      revalidateOnFocus: true,
+      dedupingInterval: 5000,
+      refreshInterval: 5000,
+    }
+  );
+  const unreadCount = unreadNotif?.count ?? 0;
+
+  // Real-time unread badge updates
+  useEffect(() => {
+    if (!me?.id) return;
+    const channel = supabase
+      .channel(`notif-unread-${me.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${me.id}` },
+        (payload: any) => {
+          // Update badge instantly, then revalidate for exact count.
+          mutateUnreadNotif(
+            (current) => {
+              const prevCount = current?.count ?? 0;
+              const eventType = payload?.eventType as "INSERT" | "UPDATE" | "DELETE" | undefined;
+              const nextRow = payload?.new as { is_read?: boolean } | undefined;
+              const oldRow = payload?.old as { is_read?: boolean } | undefined;
+
+              if (eventType === "INSERT") {
+                if (nextRow?.is_read === false) return { count: prevCount + 1 };
+                return current ?? { count: prevCount };
+              }
+              if (eventType === "DELETE") {
+                if (oldRow?.is_read === false) return { count: Math.max(0, prevCount - 1) };
+                return current ?? { count: prevCount };
+              }
+              if (eventType === "UPDATE") {
+                if (oldRow?.is_read === false && nextRow?.is_read === true) {
+                  return { count: Math.max(0, prevCount - 1) };
+                }
+                if (oldRow?.is_read === true && nextRow?.is_read === false) {
+                  return { count: prevCount + 1 };
+                }
+              }
+              return current ?? { count: prevCount };
+            },
+            { revalidate: true }
+          );
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [me?.id, mutateUnreadNotif]);
 
   // Guard: if fetcher returns error (e.g. 401), redirect back to home.
   useEffect(() => {
@@ -344,6 +402,7 @@ export default function ResidentLayout({ children }: { children: ReactNode }) {
             const isActive =
               safePath === tab.href ||
               (tab.href !== "/feed" && safePath.startsWith(tab.href));
+            const showBadge = tab.href === "/notifications" && unreadCount > 0;
             return (
               <Link
                 key={tab.href}
@@ -352,7 +411,14 @@ export default function ResidentLayout({ children }: { children: ReactNode }) {
                   isActive ? "text-blue-600" : "text-slate-900 dark:text-slate-200"
                 }`}
               >
-                <Icon className="h-6 w-6" strokeWidth={isActive ? 2.5 : 2} />
+                <span className="relative">
+                  <Icon className="h-6 w-6" strokeWidth={isActive ? 2.5 : 2} />
+                  {showBadge && (
+                    <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-red-600 px-1 text-[10px] font-black leading-none text-white ring-2 ring-white dark:ring-slate-900">
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  )}
+                </span>
                 {isActive && (
                   <div className="h-0.5 w-6 rounded-full bg-blue-600" />
                 )}

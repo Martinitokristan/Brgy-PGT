@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServiceClient } from "@/lib/supabaseService";
 import { getAuthUser } from "@/lib/getUser";
+import { detectProfanity } from "@/lib/profanity";
 
 // GET /api/posts - list posts
 export async function GET() {
@@ -110,6 +111,7 @@ export async function POST(request: Request) {
   const purpose = formData.get("purpose") as string;
   const urgency_level = formData.get("urgency_level") as string;
   const imageFile = formData.get("image") as File | null;
+  const videoFile = formData.get("video") as File | null;
 
   if (!title) {
     return NextResponse.json(
@@ -118,7 +120,52 @@ export async function POST(request: Request) {
     );
   }
 
+  // Profanity enforcement (posts)
+  const prof = detectProfanity(`${title ?? ""} ${description ?? ""}`);
+  if (prof) {
+    // increment violations + notify user; restrict commenting on 2nd offense
+    const { data: currentProfile } = await supabaseService
+      .from("profiles")
+      .select("profanity_violations, comment_restricted_until")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const prev = Number(currentProfile?.profanity_violations ?? 0);
+    const next = prev + 1;
+    const restrict = next >= 2;
+    const restrictedUntil = restrict ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() : null;
+
+    await supabaseService
+      .from("profiles")
+      .update({
+        profanity_violations: next,
+        ...(restrict ? { comment_restricted_until: restrictedUntil } : {}),
+      })
+      .eq("id", user.id);
+
+    await supabaseService.from("notifications").insert({
+      user_id: user.id,
+      type: "policy_violation",
+      title: restrict ? "Comment restricted (24 hours)" : "Content policy warning",
+      message: restrict
+        ? "Your content contains prohibited words. Due to repeated violations, you are restricted from commenting for 24 hours."
+        : "Your content contains prohibited words. Please keep the community respectful. Repeated violations may restrict your commenting privileges.",
+      is_read: false,
+    });
+
+    return NextResponse.json(
+      { error: "Your post contains prohibited words. Please edit and try again." },
+      { status: 400 }
+    );
+  }
+
   let imagePath = null;
+  let videoPath = null;
+
+  if (imageFile && videoFile) {
+    return NextResponse.json({ error: "Only one media file is allowed (image or video)." }, { status: 400 });
+  }
+
   if (imageFile && imageFile.size > 0) {
     const fileExt = imageFile.name.split('.').pop();
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
@@ -133,6 +180,34 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Failed to upload image" }, { status: 500 });
     }
     imagePath = filePath;
+  }
+
+  if (videoFile && videoFile.size > 0) {
+    const maxBytes = 50 * 1024 * 1024;
+    if (videoFile.size > maxBytes) {
+      return NextResponse.json({ error: "Video is too large. Max size is 50MB." }, { status: 400 });
+    }
+
+    const type = (videoFile.type || "").toLowerCase();
+    const okType = type === "video/mp4" || type === "video/quicktime";
+    if (!okType) {
+      return NextResponse.json({ error: "Unsupported video type. Please upload MP4 or MOV." }, { status: 400 });
+    }
+
+    const fileExt = (videoFile.name.split(".").pop() || "").toLowerCase();
+    const safeExt = fileExt || (type === "video/quicktime" ? "mov" : "mp4");
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${safeExt}`;
+    const filePath = `${fileName}`;
+
+    const { error: uploadError } = await supabaseService.storage
+      .from("post-videos")
+      .upload(filePath, videoFile);
+
+    if (uploadError) {
+      console.error("Storage Error (video):", uploadError);
+      return NextResponse.json({ error: "Failed to upload video" }, { status: 500 });
+    }
+    videoPath = filePath;
   }
 
   const { data: profile } = await supabaseService
@@ -161,6 +236,7 @@ export async function POST(request: Request) {
       purpose,
       urgency_level,
       image: imagePath,
+      video: videoPath,
       status: "pending",
     })
     .select("id")

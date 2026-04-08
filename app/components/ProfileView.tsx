@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useToast, ToastContainer } from "@/app/components/ui/toast";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import ImageCropModal from "@/app/components/ui/ImageCropModal";
 import { 
   MapPin, 
   Mail, 
@@ -195,6 +196,11 @@ export default function ProfileView({ userId }: { userId: string }) {
   const [uploadingPhoto, setUploadingPhoto] = useState<"avatar" | "cover" | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [snoozeStatus, setSnoozeStatus] = useState<{ days: number; until: string } | null>(null);
+  const [cropState, setCropState] = useState<{
+    isOpen: boolean;
+    file: File | null;
+    type: "avatar" | "cover_photo" | null;
+  }>({ isOpen: false, file: null, type: null });
 
   function handlePhotoUpload(file: File, type: "avatar" | "cover_photo") {
     const which = type === "avatar" ? "avatar" : "cover";
@@ -216,6 +222,10 @@ export default function ProfileView({ userId }: { userId: string }) {
     };
     xhr.onerror = () => { setUploadingPhoto(null); setUploadProgress(0); };
     xhr.send(fd);
+  }
+
+  function openCrop(file: File, type: "avatar" | "cover_photo") {
+    setCropState({ isOpen: true, file, type });
   }
 
   if (profileLoading) return (
@@ -437,7 +447,7 @@ export default function ProfileView({ userId }: { userId: string }) {
               <><ImageIcon className="h-3.5 w-3.5" />{t("add_cover")}</>
             )}
             <input type="file" className="hidden" accept="image/*"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePhotoUpload(f, "cover_photo"); }}
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) openCrop(f, "cover_photo"); e.currentTarget.value = ""; }}
             />
           </label>
         )}
@@ -465,7 +475,7 @@ export default function ProfileView({ userId }: { userId: string }) {
                   <Camera className="h-4 w-4 text-slate-600" />
                 )}
                 <input type="file" className="hidden" accept="image/*"
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePhotoUpload(f, "avatar"); }}
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) openCrop(f, "avatar"); e.currentTarget.value = ""; }}
                 />
               </label>
             )}
@@ -944,6 +954,20 @@ export default function ProfileView({ userId }: { userId: string }) {
         isOpen={isDrawerOpen} 
         onClose={() => setIsDrawerOpen(false)} 
         me={me}
+      />
+
+      <ImageCropModal
+        isOpen={cropState.isOpen}
+        file={cropState.file}
+        aspect={cropState.type === "cover_photo" ? 3 / 1 : 1 / 1}
+        shape={cropState.type === "avatar" ? "round" : "rect"}
+        title={cropState.type === "cover_photo" ? "Crop cover photo" : "Crop profile photo"}
+        onCancel={() => setCropState({ isOpen: false, file: null, type: null })}
+        onConfirm={(croppedFile) => {
+          const t = cropState.type;
+          setCropState({ isOpen: false, file: null, type: null });
+          if (t) handlePhotoUpload(croppedFile, t);
+        }}
       />
 
       {showStatusModal && (

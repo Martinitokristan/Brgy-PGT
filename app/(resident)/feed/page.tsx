@@ -13,6 +13,7 @@ import { getAvatarUrl } from "@/lib/utils/storage";
 import { useT } from "@/lib/useT";
 import CommentDrawer from "@/app/components/ui/CommentDrawer";
 import ImageLightbox from "@/app/components/ui/ImageLightbox";
+import VideoLightbox from "@/app/components/ui/VideoLightbox";
 import { REACTION_EMOJIS, Post, PostVariant } from "@/lib/types";
 
 // New shared components
@@ -32,7 +33,7 @@ const fetcher = (url: string) => fetch(url).then((res) => {
 });
 
 export default function FeedPage() {
-  const { data: me } = useSWR("/api/profile?action=me", fetcher, {
+  const { data: me, mutate: mutateMe } = useSWR("/api/profile?action=me", fetcher, {
     revalidateOnFocus: false,
     dedupingInterval: 5000,
   });
@@ -51,6 +52,7 @@ export default function FeedPage() {
   const [isExpanding, setIsExpanding] = useState(false);
   const [showingEmojiFor, setShowingEmojiFor] = useState<number | null>(null);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [videoLightboxSrc, setVideoLightboxSrc] = useState<string | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
   
@@ -61,6 +63,13 @@ export default function FeedPage() {
   const [shareSuccess, setShareSuccess] = useState(false);
 
   const { t } = useT();
+
+  const handleToggleAutoplay = async (nextValue: boolean) => {
+    const fd = new FormData();
+    fd.append("autoplay_videos", String(nextValue));
+    await fetch("/api/profile", { method: "PATCH", body: fd });
+    void mutateMe();
+  };
 
   // Post management handlers
   const handleDeletePost = async (postId: number) => {
@@ -140,6 +149,9 @@ export default function FeedPage() {
       {lightboxSrc && (
         <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
       )}
+      {videoLightboxSrc && (
+        <VideoLightbox src={videoLightboxSrc} onClose={() => setVideoLightboxSrc(null)} />
+      )}
 
       {/* Create Post Modal */}
       <PostForm
@@ -153,8 +165,8 @@ export default function FeedPage() {
         userName={me?.name || ""}
         variant="resident"
         formState={postForm}
-        onImageSelect={postForm.handleImageSelect}
-        onRemoveImage={postForm.removeImage}
+        onMediaSelect={postForm.handleMediaSelect}
+        onRemoveMedia={postForm.removeMedia}
         fileInputRef={postForm.fileInputRef}
       />
 
@@ -166,8 +178,8 @@ export default function FeedPage() {
         userName={me?.name || ""}
         variant="resident"
         formState={postForm}
-        onImageSelect={postForm.handleImageSelect}
-        onRemoveImage={postForm.removeImage}
+        onMediaSelect={postForm.handleMediaSelect}
+        onRemoveMedia={postForm.removeMedia}
         fileInputRef={postForm.fileInputRef}
         editPost={editingPost}
         onEditSubmit={handleEditSubmit}
@@ -193,7 +205,7 @@ export default function FeedPage() {
                 <Button
                   variant="outline"
                   onClick={() => setIsExpanding(true)}
-                  className="flex-1 justify-start border-muted bg-muted font-normal text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  className="flex-1 justify-start rounded-2xl border border-slate-900/20 dark:border-white/15 bg-white/70 dark:bg-slate-800/60 px-4 py-3 text-[14px] font-semibold text-slate-600 dark:text-slate-200 shadow-sm hover:bg-white dark:hover:bg-slate-800"
                 >
                   {t("whats_on_your_mind")}, {me?.name?.split(" ")[0] || ""}?
                 </Button>
@@ -245,7 +257,10 @@ export default function FeedPage() {
                 post={post}
                 variant="resident"
                 onImageClick={setLightboxSrc}
+                onVideoClick={setVideoLightboxSrc}
                 isOwn={post.user_id === me?.id}
+                autoplayVideos={me?.autoplay_videos ?? true}
+                onToggleAutoplayVideos={handleToggleAutoplay}
                 onDelete={handleDeletePost}
                 onEdit={setEditingPost}
               >
