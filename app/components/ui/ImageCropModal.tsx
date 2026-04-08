@@ -72,8 +72,9 @@ export default function ImageCropModal(props: {
   if (!isOpen || !file || !imageUrl) return null;
 
   async function handleSave() {
-    if (!croppedAreaPixels || isSaving || !imageUrl) return;
+    if (!croppedAreaPixels || isSaving || !imageUrl || !file) return;
     const imageSrc = imageUrl;
+    const sourceFile = file;
     setIsSaving(true);
     try {
       const blob = await cropImageToBlob({
@@ -86,7 +87,7 @@ export default function ImageCropModal(props: {
       });
 
       const ext = "jpg";
-      const baseName = file.name.replace(/\.[^/.]+$/, "");
+      const baseName = sourceFile.name.replace(/\.[^/.]+$/, "");
       const outName = `${baseName}-cropped.${ext}`;
       const croppedFile = new File([blob], outName, { type: blob.type || "image/jpeg" });
       onConfirm(croppedFile);
