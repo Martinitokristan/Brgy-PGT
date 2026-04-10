@@ -1,10 +1,11 @@
 "use client";
 
 import useSWR from "swr";
-import { fetcher } from "@/lib/fetcher";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 type Profile = {
   id: string;

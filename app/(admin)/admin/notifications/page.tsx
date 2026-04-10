@@ -1,8 +1,9 @@
 "use client";
 
 import useSWR from "swr";
-import { fetcher } from "@/lib/fetcher";
 import { Bell } from "lucide-react";
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 type Notification = {
   id: number;

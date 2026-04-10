@@ -1,10 +1,11 @@
 "use client";
 
 import useSWR from "swr";
-import { fetcherWithStatus } from "@/lib/fetcher";
 import { useState } from "react";
 import { Search } from "lucide-react";
 import Link from "next/link";
+
+const fetcher = (url: string) => fetch(url).then((r) => { if (!r.ok) throw new Error(${r.status}); return r.json(); });
 
 type Post = {
   id: number;
@@ -36,7 +37,7 @@ function formatDate(d: string) {
 }
 
 export default function AdminPostsPage() {
-  const { data: posts, isLoading, mutate } = useSWR<Post[]>("/api/posts", fetcherWithStatus);
+  const { data: posts, isLoading, mutate } = useSWR<Post[]>("/api/posts", fetcher);
 
   const [search, setSearch] = useState("");
   const [filterUrgency, setFilterUrgency] = useState("all");

@@ -21,10 +21,11 @@ import {
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import useSWR from "swr";
-import { fetcherWithError } from "@/lib/fetcher";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { PageSkeleton } from "@/app/components/ui/Skeleton";
+
+const fetcher = (url: string) => fetch(url).then((res) => { if (!res.ok) throw new Error('Failed to fetch'); return res.json(); });
 
 
 // Inline translation maps for the layout
@@ -38,14 +39,14 @@ export default function ResidentLayout({ children }: { children: ReactNode }) {
   const [showSecurityMenu, setShowSecurityMenu] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
-  const { data: me, error } = useSWR("/api/profile?action=me", fetcherWithError, {
+  const { data: me, error } = useSWR("/api/profile?action=me", fetcher, {
     revalidateOnFocus: false,
     dedupingInterval: 10000,
   });
 
   const { data: unreadNotif, mutate: mutateUnreadNotif } = useSWR<{ count: number }>(
     "/api/notifications?action=unread_count",
-    fetcherWithError,
+    fetcher,
     {
       revalidateOnFocus: true,
       dedupingInterval: 5000,

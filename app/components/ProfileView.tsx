@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import useSWR from "swr";
 import { formatRelativeTime } from "@/app/utils/dateUtils";
-import { fetcherWithError } from "@/lib/fetcher";
 import { useToast, ToastContainer } from "@/app/components/ui/toast";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -34,6 +33,8 @@ import {
 import CommentDrawer from "@/app/components/ui/CommentDrawer";
 import { PostStatusBadge } from "@/app/components/post/PostStatusBadge";
 import { useT } from "@/lib/useT";
+
+const fetcher = (url: string) => fetch(url).then((res) => { if (!res.ok) throw new Error('Failed to fetch'); return res.json(); });
 
 type Post = {
   id: number;
@@ -121,11 +122,11 @@ function formatPhoneForDisplay(raw: string | null | undefined) {
 }
 
 export default function ProfileView({ userId }: { userId: string }) {
-  const { data: profile, mutate, isLoading: profileLoading } = useSWR<ProfileData>(userId ? `/api/profile/${userId}` : null, fetcherWithError, {
+  const { data: profile, mutate, isLoading: profileLoading } = useSWR<ProfileData>(userId ? `/api/profile/${userId}` : null, fetcher, {
     revalidateOnFocus: false,
     dedupingInterval: 5000,
   });
-  const { data: me } = useSWR("/api/profile?action=me", fetcherWithError, {
+  const { data: me } = useSWR("/api/profile?action=me", fetcher, {
     revalidateOnFocus: false,
     dedupingInterval: 10000,
   });

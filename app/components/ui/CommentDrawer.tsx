@@ -7,8 +7,9 @@ import useSWR from "swr";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { formatRelativeTime } from "@/app/utils/dateUtils";
-import { fetcher } from "@/lib/fetcher";
 import { CommentListSkeleton } from "@/app/components/ui/Skeleton";
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 type Comment = {
   id: number;

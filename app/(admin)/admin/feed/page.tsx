@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { fetcherWithError } from "@/lib/fetcher";
 import { AlertCircle, User as UserIcon } from "lucide-react";
 import { Post, PostVariant } from "@/lib/types";
 
@@ -20,6 +19,8 @@ import { usePostForm } from "@/hooks/usePostForm";
 import CommentDrawer from "@/app/components/ui/CommentDrawer";
 import VideoLightbox from "@/app/components/ui/VideoLightbox";
 
+const fetcher = (url: string) => fetch(url).then((res) => { if (!res.ok) throw new Error('Failed to fetch'); return res.json(); });
+
 
 const ShareIcon = ({ className = "h-5 w-5" }: { className?: string }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
@@ -28,11 +29,11 @@ const ShareIcon = ({ className = "h-5 w-5" }: { className?: string }) => (
 );
 
 export default function AdminFeedPage() {
-  const { data: me, mutate: mutateMe } = useSWR("/api/profile?action=me", fetcherWithError, {
+  const { data: me, mutate: mutateMe } = useSWR("/api/profile?action=me", fetcher, {
     revalidateOnFocus: false,
     dedupingInterval: 5000,
   });
-  const { data: posts = [], isLoading, error, mutate } = useSWR<Post[]>("/api/posts", fetcherWithError, {
+  const { data: posts = [], isLoading, error, mutate } = useSWR<Post[]>("/api/posts", fetcher, {
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
     dedupingInterval: 5000,
