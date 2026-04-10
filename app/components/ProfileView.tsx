@@ -33,7 +33,7 @@ import {
 import CommentDrawer from "@/app/components/ui/CommentDrawer";
 import { PostStatusBadge } from "@/app/components/post/PostStatusBadge";
 import { ReactionBar } from "@/app/components/post/ReactionBar";
-import { REACTION_EMOJIS, PostVariant } from "@/lib/types";
+import { REACTION_EMOJIS, PostVariant, Post } from "@/lib/types";
 import VideoLightbox from "@/app/components/ui/VideoLightbox";
 import ImageLightbox from "@/app/components/ui/ImageLightbox";
 import { getPostVideoUrl } from "@/lib/utils/storage";
@@ -41,30 +41,6 @@ import { Volume2, VolumeX, Play } from "lucide-react";
 import { useT } from "@/lib/useT";
 
 const fetcher = (url: string) => fetch(url).then((res) => { if (!res.ok) throw new Error('Failed to fetch'); return res.json(); });
-
-type Post = {
-  id: number;
-  title: string | null;
-  description: string | null;
-  purpose: string | null;
-  urgency_level: string | null;
-  status: string | null;
-  created_at: string;
-  admin_response: string | null;
-  image: string | null;
-  video?: string | null;
-  comment_count: number;
-  reaction_counts: Record<string, number>;
-  my_reaction: string | null;
-  metadata?: {
-    sharer_name?: string;
-    original_author_name?: string;
-    original_title?: string | null;
-    original_description?: string | null;
-    original_image?: string | null;
-    original_created_at?: string | null;
-  } | null;
-};
 
 type ProfileData = {
   user: {
@@ -767,7 +743,7 @@ export default function ProfileView({ userId }: { userId: string }) {
                                <span className="text-[13px] font-medium">• {post.purpose || "General"}</span>
                             </div>
                             <span className="mt-0.5 text-[12px] font-medium text-slate-400">
-                               {new Date(post.created_at).toLocaleString()}
+                               {post.created_at ? new Date(post.created_at).toLocaleString() : ''}
                             </span>
                          </div>
                       </div>

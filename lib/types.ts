@@ -12,6 +12,7 @@ export type Post = {
   created_at: string | null;
   image: string | null;
   video?: string | null;
+  admin_response?: string | null;
   profiles: { name: string; avatar?: string | null } | null;
   author_role: string | null;
   reaction_counts: Record<string, number>;
