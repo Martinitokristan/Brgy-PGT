@@ -37,18 +37,7 @@ export default function LandingPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    
-    const getDeviceToken = () => {
-      const match = document.cookie.match(/device_token=([^;]+)/);
-      return match ? match[1] : null;
-    };
-    
-    const setDeviceTokenCookie = (token: string) => {
-      const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
-      document.cookie = `device_token=${token}; path=/; expires=${expires.toUTCString()}; SameSite=Lax`;
-    };
-    
-    let token = getDeviceToken();
+    let token = window.localStorage.getItem("device_token");
     if (!token) {
       token = (typeof self.crypto?.randomUUID === "function")
         ? self.crypto.randomUUID()
@@ -56,7 +45,7 @@ export default function LandingPage() {
             const r = (Math.random() * 16) | 0;
             return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
           });
-      setDeviceTokenCookie(token);
+      window.localStorage.setItem("device_token", token);
     }
     setDeviceToken(token);
   }, []);

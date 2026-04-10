@@ -31,19 +31,26 @@ export async function GET() {
 
     const postList = postsRaw ?? [];
 
-    // Batch-fetch profiles + only current user's reactions (counter caches on posts table)
+    // Batch-fetch profiles + reactions + comments counts
     const userIds = [...new Set(postList.map((p: any) => p.user_id).filter(Boolean))];
     const postIds = postList.map((p: any) => p.id);
     const profileMap: Record<string, { name: string | null; avatar: string | null; role: string | null }> = {};
     const myReactionsMap: Record<number, string> = {};
+    const reactionCountsMap: Record<number, number> = {};
+    const commentCountsMap: Record<number, number> = {};
 
-    // Only 2 parallel queries instead of 3 — comments count comes from cache
-    const [profilesResult, myReactionsResult] = await Promise.all([
+    const [profilesResult, myReactionsResult, allReactionsResult, allCommentsResult] = await Promise.all([
       userIds.length > 0
         ? service.from("profiles").select("id, name, avatar, role").in("id", userIds)
         : Promise.resolve({ data: [], error: null }),
       postIds.length > 0
         ? service.from("reactions").select("post_id, type").eq("user_id", userId).in("post_id", postIds)
+        : Promise.resolve({ data: [], error: null }),
+      postIds.length > 0
+        ? service.from("reactions").select("post_id").in("post_id", postIds)
+        : Promise.resolve({ data: [], error: null }),
+      postIds.length > 0
+        ? service.from("comments").select("post_id").in("post_id", postIds)
         : Promise.resolve({ data: [], error: null }),
     ]);
 
@@ -53,15 +60,21 @@ export async function GET() {
     for (const r of myReactionsResult.data ?? []) {
       myReactionsMap[r.post_id] = r.type;
     }
+    for (const r of allReactionsResult.data ?? []) {
+      reactionCountsMap[r.post_id] = (reactionCountsMap[r.post_id] ?? 0) + 1;
+    }
+    for (const c of allCommentsResult.data ?? []) {
+      commentCountsMap[c.post_id] = (commentCountsMap[c.post_id] ?? 0) + 1;
+    }
 
-    // Transform data — use counter cache columns directly
+    // Transform data
     const posts = postList.map((post: any) => ({
       ...post,
       profiles: profileMap[post.user_id] ?? null,
       author_role: profileMap[post.user_id]?.role ?? null,
-      reaction_counts: { total: post.reaction_count ?? 0 },
+      reaction_counts: { total: reactionCountsMap[post.id] ?? 0 },
       my_reaction: myReactionsMap[post.id] ?? null,
-      comment_count: post.comment_count ?? 0,
+      comment_count: commentCountsMap[post.id] ?? 0,
     }));
 
     return NextResponse.json(posts);

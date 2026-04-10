@@ -1,9 +1,10 @@
 "use client";
 
 import useSWR from "swr";
-import { fetcher } from "@/lib/fetcher";
 import { FormEvent, useState } from "react";
 import { Send, History } from "lucide-react";
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 type SmsLog = {
   id: number;

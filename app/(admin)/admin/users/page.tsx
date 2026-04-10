@@ -1,7 +1,6 @@
 "use client";
 
 import useSWR from "swr";
-import { fetcher } from "@/lib/fetcher";
 import { useState } from "react";
 import {  Phone,
   MapPin,
@@ -21,6 +20,8 @@ import {  Phone,
 } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 type UserProfile = {
   id: string;

@@ -20,8 +20,9 @@ import {
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import useSWR from "swr";
-import { fetcher } from "@/lib/fetcher";
 import { PageSkeleton } from "@/app/components/ui/Skeleton";
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 
 export default function AdminLayout({ children }: { children: ReactNode }) {

@@ -1,10 +1,11 @@
 "use client";
 
 import useSWR from "swr";
-import { fetcher } from "@/lib/fetcher";
 import { useState } from "react";
 import { Calendar, MapPin, Clock, Plus, X } from "lucide-react";
 import DateTimePicker from "@/app/components/DateTimePicker";
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 type Event = {
   id: number;

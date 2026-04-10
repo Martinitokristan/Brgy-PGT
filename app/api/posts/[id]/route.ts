@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServiceClient } from "@/lib/supabaseService";
+import { createSupabaseServerClient } from "@/lib/supabaseServer";
 import { getAuthUser } from "@/lib/getUser";
 import { detectProfanity } from "@/lib/profanity";
 
@@ -241,7 +242,7 @@ export async function POST(request: Request, props: Params) {
 }
 
 async function handleAddComment(postId: number, userId: string, body: any) {
-  const service = createSupabaseServiceClient();
+  const service = await createSupabaseServerClient();
   const commentBody = body?.body as string | undefined;
   const parentId = body?.parent_id as number | null | undefined;
 
@@ -293,35 +294,46 @@ async function handleAddComment(postId: number, userId: string, body: any) {
       return NextResponse.json({ error: "Failed to add comment" }, { status: 500 });
     }
 
+    // Update profile violations count and restriction
     await service
       .from("profiles")
       .update({
         profanity_violations: next,
-        ...(restrict ? { comment_restricted_until: restrictedUntil } : {}),
+        comment_restricted_until: restrictedUntil,
       })
       .eq("id", userId);
 
-    await service.from("notifications").insert({
-      user_id: userId,
-      type: "policy_violation",
-      title: restrict ? "Comment restricted (24 hours)" : "Comment policy warning",
-      message: restrict
-        ? "Your comment contains prohibited words. Due to repeated violations, you are restricted from commenting for 24 hours."
-        : "Your comment contains prohibited words. Please keep the community respectful. Repeated violations may restrict your commenting privileges.",
-      post_id: postId,
-      comment_id: inserted?.id ?? null,
-      is_read: false,
-    });
+    // Insert profanity notification
+    try {
+      await service
+        .from("notifications")
+        .insert({
+          user_id: userId,
+          type: "policy_violation",
+          title: restrict ? "Comment restricted (24 hours)" : "Comment policy warning",
+          message: restrict
+            ? "Your comment contains prohibited words. Due to repeated violations, you are restricted from commenting for 24 hours."
+            : "Your comment contains prohibited words. Please keep the community respectful. Repeated violations may restrict your commenting privileges.",
+          post_id: postId,
+          comment_id: inserted?.id ?? null,
+          is_read: false,
+        });
+    } catch (notifError) {
+      console.error("Failed to insert profanity notification:", notifError);
+    }
 
-    await sendCommentActivityNotification(service, {
-      actorUserId: userId,
-      postId,
-      commentId: inserted?.id ?? null,
-      parentId: parentId ?? null,
-      commentBody: commentBody.trim(),
-    });
+    try {
+      await sendCommentActivityNotification(service, {
+        actorUserId: userId,
+        postId,
+        commentId: inserted?.id ?? null,
+        parentId: parentId ?? null,
+        commentBody: commentBody.trim(),
+      });
+    } catch (notifError) {
+      console.error("Failed to send comment activity notification:", notifError);
+    }
 
-    // Still return the created comment so the UI can show it to the author
     return NextResponse.json(inserted, { status: 201 });
   }
 
@@ -336,13 +348,17 @@ async function handleAddComment(postId: number, userId: string, body: any) {
     return NextResponse.json({ error: "Failed to add comment" }, { status: 500 });
   }
 
-  await sendCommentActivityNotification(service, {
-    actorUserId: userId,
-    postId,
-    commentId: data?.id ?? null,
-    parentId: parentId ?? null,
-    commentBody: commentBody.trim(),
-  });
+  try {
+    await sendCommentActivityNotification(service, {
+      actorUserId: userId,
+      postId,
+      commentId: data?.id ?? null,
+      parentId: parentId ?? null,
+      commentBody: commentBody.trim(),
+    });
+  } catch (notifError) {
+    console.error("Failed to send comment activity notification:", notifError);
+  }
 
   return NextResponse.json(data, { status: 201 });
 }

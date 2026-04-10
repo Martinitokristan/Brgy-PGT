@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { fetcherWithError } from "@/lib/fetcher";
 import { Calendar, Clock, MapPin, Search, Bookmark, Check, Users } from "lucide-react";
 import EventDetailModal from "./components/EventDetailModal";
 import { useT } from "@/lib/useT";
+
+const fetcher = (url: string) => fetch(url).then((res) => { if (!res.ok) throw new Error('Failed to fetch'); return res.json(); });
 
 type Event = {
   id: number;
@@ -38,10 +39,10 @@ function formatTime(d: string) {
 }
 
 export default function EventsPage() {
-  const { data: events, error, isLoading } = useSWR<Event[]>("/api/events", fetcherWithError, {
+  const { data: events, error, isLoading } = useSWR<Event[]>("/api/events", fetcher, {
     revalidateOnFocus: false,
   });
-  const { data: savedEvents, mutate: mutateSaved } = useSWR<Event[]>("/api/saved-events", fetcherWithError, {
+  const { data: savedEvents, mutate: mutateSaved } = useSWR<Event[]>("/api/saved-events", fetcher, {
     revalidateOnFocus: false,
     dedupingInterval: 5000,
   });
@@ -69,7 +70,7 @@ export default function EventsPage() {
   // Get interested status from API directly for all events
   const { data: interestsData, mutate: mutateInterests } = useSWR(
     eventsList.length > 0 ? `/api/event-interests?event_ids=${eventsList.map(e => e.id).join(',')}` : null,
-    fetcherWithError,
+    fetcher,
     { revalidateOnFocus: false, dedupingInterval: 5000 }
   );
 

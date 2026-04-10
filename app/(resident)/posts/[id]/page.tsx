@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import useSWR from "swr";
-import { fetcherWithError } from "@/lib/fetcher";
 import { AlertCircle } from "lucide-react";
 import ImageLightbox from "@/app/components/ui/ImageLightbox";
 import VideoLightbox from "@/app/components/ui/VideoLightbox";
@@ -12,6 +11,8 @@ import { PostCard } from "@/app/components/post/PostCard";
 import { ReactionBar } from "@/app/components/post/ReactionBar";
 import { ShareModal } from "@/app/components/post/ShareModal";
 import { Post } from "@/lib/types";
+
+const fetcher = (url: string) => fetch(url).then((res) => { if (!res.ok) throw new Error('Failed to fetch'); return res.json(); });
 
 
 export default function PostDetailPage() {
@@ -24,10 +25,10 @@ export default function PostDetailPage() {
     return Number.isFinite(v) && v > 0 ? v : null;
   })();
   
-  const { data: me } = useSWR("/api/profile?action=me", fetcherWithError);
+  const { data: me } = useSWR("/api/profile?action=me", fetcher);
   const { data: post, isLoading, error, mutate } = useSWR<Post>(
     postId ? `/api/posts/${postId}` : null,
-    fetcherWithError,
+    fetcher,
     { revalidateOnFocus: false, dedupingInterval: 5000 }
   );
 

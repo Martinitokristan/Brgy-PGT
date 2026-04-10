@@ -36,7 +36,7 @@ async function handleGetMe() {
   const { data, error } = await service
     .from("profiles")
     .select(
-      "id, name, email, role, is_approved, is_verified, barangay_id, phone, purok_address, sex, birth_date, age, avatar, cover_photo, autoplay_videos"
+      "id, name, email, role, is_approved, is_verified, barangay_id, phone, purok_address, sex, birth_date, age, avatar, cover_photo, cover_photo_full, autoplay_videos"
     )
     .eq("id", user.id)
     .maybeSingle();
@@ -138,14 +138,14 @@ async function handleUpdateMe(request: Request) {
     }
   }
 
-  const fileFields = ["avatar", "cover_photo"];
+  const fileFields = ["avatar", "cover_photo", "cover_photo_full"];
   for (const field of fileFields) {
     const file = formData.get(field) as File | null;
     if (file && file.size > 0) {
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}-${field}-${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;
-      const bucketName = field === "cover_photo" ? "profile-covers" : "avatars";
+      const bucketName = field === "cover_photo" || field === "cover_photo_full" ? "profile-covers" : "avatars";
 
       const { error: uploadError } = await supabaseService.storage
         .from(bucketName)

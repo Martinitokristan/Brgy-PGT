@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Moon, Sun, LogOut, ShieldCheck, User, Lock, Bell, ChevronRight, Languages, MonitorX, Trash2, EyeOff, Eye, Loader2, AlertTriangle, Check, X } from "lucide-react";
 import useSWR from "swr";
-import { fetcher } from "@/lib/fetcher";
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 // ── Dark mode ────────────────────────────────────────────────
 function useDarkMode() {
