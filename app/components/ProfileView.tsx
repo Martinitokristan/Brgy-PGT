@@ -259,7 +259,7 @@ export default function ProfileView({ userId }: { userId: string }) {
     originalFile?: File | null;
   }>({ isOpen: false, file: null, type: null });
 
-  function handlePhotoUpload(file: File, type: "avatar" | "cover_photo", originalFile?: File) {
+  function handlePhotoUpload(file: File, type: "avatar" | "cover_photo", originalFile?: File | null) {
     const which = type === "avatar" ? "avatar" : "cover";
     setUploadingPhoto(which);
     setUploadProgress(0);
