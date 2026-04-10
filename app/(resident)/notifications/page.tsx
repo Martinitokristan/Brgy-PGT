@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
 import { useSWRConfig } from "swr";
 import { Bell, X, MoreHorizontal, Trash2, BellOff, UserX } from "lucide-react";
 import { useT } from "@/lib/useT";
@@ -18,7 +19,6 @@ type Notification = {
   source_user_id?: string | null;
 };
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr);

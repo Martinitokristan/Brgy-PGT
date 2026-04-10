@@ -50,7 +50,3 @@ next-env.d.ts
 errors.txt
 ts-errors.txt
 *.log
-
-# PWA auto-generated cache files (workbox — not used currently)
-/public/workbox-*.js
-/public/workbox-*.js.map

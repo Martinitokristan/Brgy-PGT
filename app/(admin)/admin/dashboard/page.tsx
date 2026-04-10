@@ -1,6 +1,7 @@
 "use client";
 
 import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
 import Link from "next/link";
 import {
   FileText,
@@ -12,7 +13,6 @@ import {
   Calendar,
 } from "lucide-react";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type Stats = {
   totalPosts: number;

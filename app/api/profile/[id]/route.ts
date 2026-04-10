@@ -182,42 +182,32 @@ export async function GET(_request: Request, props: Params) {
     isFollowing = (count ?? 0) > 0;
   }
 
-  // 4. Fetch User Posts (latest 20) — use service client so RLS doesn't block
+  // 4. Fetch User Posts (latest 20) — use counter cache columns for speed
   const { data: posts } = await service
     .from("posts")
-    .select(`
-      id, title, description, purpose, urgency_level, status,
-      created_at, admin_response, image, user_id, metadata,
-      reactions(type, user_id),
-      comments(id)
-    `)
+    .select("id, title, description, purpose, urgency_level, status, created_at, admin_response, image, user_id, metadata, reaction_count, comment_count")
     .eq("user_id", targetUserId)
     .order("created_at", { ascending: false })
     .limit(20);
 
-  // Transform posts to include counts
-  const transformedPosts = (posts ?? []).map((post: any) => {
-    const reactions = post.reactions || [];
-    const counts: Record<string, number> = {};
-    let myReaction = null;
+  // Fetch current user's reactions for these posts in one query
+  const postIdList = (posts ?? []).map((p: any) => p.id);
+  const myReactionsMap: Record<number, string> = {};
+  if (currentUserId && postIdList.length > 0) {
+    const { data: myReactions } = await service
+      .from("reactions")
+      .select("post_id, type")
+      .eq("user_id", currentUserId)
+      .in("post_id", postIdList);
+    for (const r of myReactions ?? []) myReactionsMap[r.post_id] = r.type;
+  }
 
-    for (const r of reactions) {
-      counts[r.type] = (counts[r.type] ?? 0) + 1;
-      if (currentUserId && r.user_id === currentUserId) {
-        myReaction = r.type;
-      }
-    }
-
-    return {
-      ...post,
-      profiles: post.profiles,
-      reaction_counts: counts,
-      my_reaction: myReaction,
-      comment_count: post.comments?.length || 0,
-      reactions: undefined,
-      comments: undefined,
-    };
-  });
+  const transformedPosts = (posts ?? []).map((post: any) => ({
+    ...post,
+    reaction_counts: { total: post.reaction_count },
+    my_reaction: myReactionsMap[post.id] ?? null,
+    comment_count: post.comment_count,
+  }));
 
   return NextResponse.json({
     user: profile,

@@ -85,7 +85,7 @@ async function handleGetComments(postId: number) {
 
   const { data: comments, error } = await service
     .from("comments")
-    .select("id, post_id, user_id, parent_id, body, liked_by, created_at, is_hidden")
+    .select("id, post_id, user_id, parent_id, body, created_at, is_hidden")
     .eq("post_id", postId)
     .order("created_at", { ascending: true });
 
@@ -117,8 +117,7 @@ async function handleGetComments(postId: number) {
     return false;
   });
 
-  // Optional: enrich with emoji reactions if `comment_reactions` table exists.
-  // Falls back to legacy `liked_by` if the table isn't present.
+  // Enrich comments with reactions from comment_reactions table.
   const commentIds = commentList.map((c: any) => c.id).filter(Boolean);
   const reactionsByComment: Record<number, { user_id: string; type: string }[]> = {};
   if (commentIds.length > 0) {
@@ -135,7 +134,7 @@ async function handleGetComments(postId: number) {
         reactionsByComment[r.comment_id].push({ user_id: r.user_id, type: r.type });
       }
     } catch {
-      // Ignore and fall back to liked_by only
+      // comment_reactions unavailable, comments will have empty reactions
     }
   }
 
@@ -167,13 +166,11 @@ async function handleGetComments(postId: number) {
         };
       }
 
-      // Legacy fallback: treat `liked_by` as Like reactions.
-      const likedBy: string[] = c.liked_by || [];
       return {
         ...c,
         profiles: profileMap[c.user_id] ?? null,
-        reaction_counts: likedBy.length > 0 ? { like: likedBy.length } : {},
-        my_reaction: userId && likedBy.includes(userId) ? "like" : null,
+        reaction_counts: {},
+        my_reaction: null,
       };
     }),
     { status: 200 }
@@ -438,25 +435,8 @@ async function handleToggleReaction(postId: number, userId: string, body: any) {
 }
 
 async function handleCommentLike(userId: string, body: any) {
-  const service = createSupabaseServiceClient();
-  const commentId = Number(body?.comment_id);
-  if (!commentId || Number.isNaN(commentId)) {
-    return NextResponse.json({ error: "Invalid comment id" }, { status: 400 });
-  }
-
-  const { data: comment } = await service.from("comments").select("liked_by").eq("id", commentId).single();
-  if (!comment) return NextResponse.json({ error: "Comment not found" }, { status: 404 });
-
-  const likedBy: string[] = comment.liked_by || [];
-  const updated = likedBy.includes(userId)
-    ? likedBy.filter((id) => id !== userId)
-    : [...likedBy, userId];
-
-  const { data, error } = await service
-    .from("comments").update({ liked_by: updated }).eq("id", commentId).select("liked_by").single();
-
-  if (error) return NextResponse.json({ error: "Failed to update like" }, { status: 500 });
-  return NextResponse.json(data);
+  // Routes through handleCommentReaction with type="like"
+  return handleCommentReaction(userId, { ...body, type: "like" });
 }
 
 async function handleCommentReaction(userId: string, body: any) {
@@ -504,15 +484,9 @@ async function handleCommentReaction(userId: string, body: any) {
       if (r.user_id === userId) myReaction = r.type;
     }
     return NextResponse.json({ counts, myReaction }, { status: 200 });
-  } catch {
-    // Legacy fallback: only Like/Unlike
-    if (type && type !== "like" && type !== "unlike") {
-      // Best-effort: behave like Like (so UX still "does something")
-      await handleCommentLike(userId, { comment_id: commentId });
-    } else {
-      await handleCommentLike(userId, { comment_id: commentId });
-    }
-    return NextResponse.json({ ok: true, legacy: true }, { status: 200 });
+  } catch (err) {
+    console.error("handleCommentReaction error:", err);
+    return NextResponse.json({ error: "Failed to update reaction" }, { status: 500 });
   }
 }
 

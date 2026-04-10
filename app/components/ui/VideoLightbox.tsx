@@ -29,7 +29,7 @@ export default function VideoLightbox(props: { src: string; onClose: () => void 
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") closeAndSyncToFeed();
       if (e.key === " ") {
         e.preventDefault();
         togglePlay();
@@ -43,7 +43,27 @@ export default function VideoLightbox(props: { src: string; onClose: () => void 
       document.body.style.overflow = prevOverflow;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onClose]);
+  }, []);
+
+  // Handle Android back gesture: push history entry on mount
+  // so swiping back closes the video instead of navigating away.
+  useEffect(() => {
+    window.history.pushState({ __drawer: "video" }, "");
+
+    const onPopState = () => {
+      closeAndSyncToFeed();
+    };
+
+    window.addEventListener("popstate", onPopState);
+    return () => {
+      window.removeEventListener("popstate", onPopState);
+      // Use replaceState (not back()) so no popstate fires and no race with other overlays
+      if (window.history.state?.__drawer === "video") {
+        window.history.replaceState(null, "");
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     // Hide controls after a moment when playing

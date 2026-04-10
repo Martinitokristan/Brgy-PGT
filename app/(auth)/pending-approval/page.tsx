@@ -3,10 +3,10 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
 import { Clock, LogOut, ArrowLeft } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function PendingApprovalPage() {
   const router = useRouter();

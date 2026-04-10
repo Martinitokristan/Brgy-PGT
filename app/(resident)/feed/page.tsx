@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import useSWR from "swr";
+import { fetcherWithError } from "@/lib/fetcher";
 import { AlertCircle, AlertCircle as AlertCircleIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,17 +28,13 @@ import { useReactions } from "@/hooks/useReactions";
 import { useFeedRealtime } from "@/hooks/useFeedRealtime";
 import { usePostForm } from "@/hooks/usePostForm";
 
-const fetcher = (url: string) => fetch(url).then((res) => {
-  if (!res.ok) throw new Error("Failed to fetch");
-  return res.json();
-});
 
 export default function FeedPage() {
-  const { data: me, mutate: mutateMe } = useSWR("/api/profile?action=me", fetcher, {
+  const { data: me, mutate: mutateMe } = useSWR("/api/profile?action=me", fetcherWithError, {
     revalidateOnFocus: false,
     dedupingInterval: 5000,
   });
-  const { data: posts = [], isLoading, error, mutate } = useSWR<Post[]>("/api/posts", fetcher, {
+  const { data: posts = [], isLoading, error, mutate } = useSWR<Post[]>("/api/posts", fetcherWithError, {
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
     dedupingInterval: 5000,

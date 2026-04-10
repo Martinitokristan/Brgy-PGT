@@ -1,6 +1,7 @@
 "use client";
 
 import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
@@ -9,7 +10,6 @@ type Profile = {
   id: string;
 };
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function MyProfileRedirectPage() {
   const router = useRouter();

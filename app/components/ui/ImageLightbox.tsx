@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
-import { X, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { X, RotateCcw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface ImageLightboxProps {
@@ -14,121 +14,143 @@ export default function ImageLightbox({ src, alt, onClose }: ImageLightboxProps)
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
-  const dragStart = useRef({ x: 0, y: 0 });
-  const lastPos = useRef({ x: 0, y: 0 });
-  const lastTap = useRef(0);
-  const pinchStart = useRef<number | null>(null);
-  const pinchScaleStart = useRef(1);
 
+  // Refs for mutable values shared with non-passive native listeners
+  const scaleRef = useRef(1);
+  const posRef = useRef({ x: 0, y: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
+  const lastTap = useRef(0);
+  const pinchStartDist = useRef<number | null>(null);
+  const pinchStartScale = useRef(1);
+  const dragOrigin = useRef<{ x: number; y: number } | null>(null);
+  const draggingRef = useRef(false);
+
+  function applyScale(s: number) {
+    scaleRef.current = s;
+    setScale(s);
+  }
+
+  function applyPos(p: { x: number; y: number }) {
+    posRef.current = p;
+    setPosition(p);
+  }
+
+  function reset() {
+    applyScale(1);
+    applyPos({ x: 0, y: 0 });
+  }
+
+  // Escape key + body scroll lock
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
+      document.body.style.overflow = prev;
     };
   }, [onClose]);
 
-  // Ctrl + scroll zoom (desktop)
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    if (!e.ctrlKey && !e.metaKey) return; // only zoom with Ctrl/Cmd held
-    e.preventDefault();
-    setScale((s) => Math.max(0.5, Math.min(5, s - e.deltaY * 0.004)));
+  // Android back gesture: push history entry on mount
+  useEffect(() => {
+    window.history.pushState({ __drawer: "image" }, "");
+    const onPopState = () => onClose();
+    window.addEventListener("popstate", onPopState);
+    return () => {
+      window.removeEventListener("popstate", onPopState);
+      if (window.history.state?.__drawer === "image") {
+        window.history.replaceState(null, "");
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Double-click / double-tap to zoom 2× or reset
-  function handleDoubleClick() {
-    if (scale > 1) {
-      reset();
-    } else {
-      setScale(2);
+  // Non-passive native touch listeners (required for e.preventDefault() to work
+  // during pinch-to-zoom — React synthetic onTouchMove is passive in React 17+)
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    function dist(t: TouchList) {
+      return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
     }
-  }
 
-  // Single tap detection on touch (to close when scale=1)
-  function handleTouchTap(e: React.TouchEvent) {
-    const now = Date.now();
-    const DOUBLE_TAP_DELAY = 300;
-    if (now - lastTap.current < DOUBLE_TAP_DELAY) {
-      // Double tap
-      handleDoubleClick();
-    }
-    lastTap.current = now;
-  }
+    function onTouchStart(e: TouchEvent) {
+      if (e.touches.length === 2) {
+        pinchStartDist.current = dist(e.touches);
+        pinchStartScale.current = scaleRef.current;
+      } else if (e.touches.length === 1) {
+        const now = Date.now();
+        if (now - lastTap.current < 300) {
+          // Double-tap: zoom 2× or reset
+          if (scaleRef.current > 1) reset();
+          else applyScale(2);
+        }
+        lastTap.current = now;
 
-  // Pinch to zoom (touch)
-  function getTouchDist(e: React.TouchEvent) {
-    const [a, b] = [e.touches[0], e.touches[1]];
-    return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-  }
-
-  function handleTouchStart(e: React.TouchEvent) {
-    if (e.touches.length === 2) {
-      // Pinch start
-      pinchStart.current = getTouchDist(e);
-      pinchScaleStart.current = scale;
-    } else if (e.touches.length === 1) {
-      handleTouchTap(e);
-      if (scale > 1) {
-        const touch = e.touches[0];
-        dragStart.current = { x: touch.clientX - lastPos.current.x, y: touch.clientY - lastPos.current.y };
-        setIsDragging(true);
+        if (scaleRef.current > 1) {
+          const t = e.touches[0];
+          dragOrigin.current = { x: t.clientX - posRef.current.x, y: t.clientY - posRef.current.y };
+          draggingRef.current = true;
+          setIsDragging(true);
+        }
       }
     }
-  }
 
-  function handleTouchMove(e: React.TouchEvent) {
-    // Only prevent default when the user is actively zooming/panning the image.
-    // This preserves native browser back-swipe gestures on iOS/Android.
-    if (e.touches.length === 2 && pinchStart.current !== null) {
-      e.preventDefault();
-      // Pinch zoom
-      const dist = getTouchDist(e);
-      const newScale = Math.max(0.5, Math.min(5, pinchScaleStart.current * (dist / pinchStart.current)));
-      setScale(newScale);
-    } else if (e.touches.length === 1 && isDragging && scale > 1) {
-      e.preventDefault();
-      // Pan
-      const touch = e.touches[0];
-      const nx = touch.clientX - dragStart.current.x;
-      const ny = touch.clientY - dragStart.current.y;
-      lastPos.current = { x: nx, y: ny };
-      setPosition({ x: nx, y: ny });
+    function onTouchMove(e: TouchEvent) {
+      if (e.touches.length === 2 && pinchStartDist.current !== null) {
+        e.preventDefault();
+        const newScale = Math.max(1, Math.min(5, pinchStartScale.current * (dist(e.touches) / pinchStartDist.current)));
+        applyScale(newScale);
+      } else if (e.touches.length === 1 && draggingRef.current && scaleRef.current > 1 && dragOrigin.current) {
+        e.preventDefault();
+        const t = e.touches[0];
+        applyPos({ x: t.clientX - dragOrigin.current.x, y: t.clientY - dragOrigin.current.y });
+      }
     }
-  }
 
-  function handleTouchEnd() {
-    pinchStart.current = null;
-    setIsDragging(false);
+    function onTouchEnd() {
+      pinchStartDist.current = null;
+      draggingRef.current = false;
+      dragOrigin.current = null;
+      setIsDragging(false);
+    }
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd);
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Ctrl+scroll zoom (desktop)
+  function handleWheel(e: React.WheelEvent) {
+    if (!e.ctrlKey && !e.metaKey) return;
+    e.preventDefault();
+    applyScale(Math.max(1, Math.min(5, scaleRef.current - e.deltaY * 0.004)));
   }
 
   // Mouse drag (desktop)
   function handlePointerDown(e: React.PointerEvent) {
-    if (scale <= 1 || e.pointerType === "touch") return;
+    if (scaleRef.current <= 1 || e.pointerType === "touch") return;
+    draggingRef.current = true;
     setIsDragging(true);
-    dragStart.current = { x: e.clientX - lastPos.current.x, y: e.clientY - lastPos.current.y };
+    dragOrigin.current = { x: e.clientX - posRef.current.x, y: e.clientY - posRef.current.y };
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   }
 
   function handlePointerMove(e: React.PointerEvent) {
-    if (!isDragging || e.pointerType === "touch") return;
-    const nx = e.clientX - dragStart.current.x;
-    const ny = e.clientY - dragStart.current.y;
-    lastPos.current = { x: nx, y: ny };
-    setPosition({ x: nx, y: ny });
+    if (!draggingRef.current || e.pointerType === "touch" || !dragOrigin.current) return;
+    applyPos({ x: e.clientX - dragOrigin.current.x, y: e.clientY - dragOrigin.current.y });
   }
 
   function handlePointerUp(e: React.PointerEvent) {
-    if (e.pointerType !== "touch") setIsDragging(false);
-  }
-
-  function reset() {
-    setScale(1);
-    setPosition({ x: 0, y: 0 });
-    lastPos.current = { x: 0, y: 0 };
+    if (e.pointerType !== "touch") { draggingRef.current = false; setIsDragging(false); }
   }
 
   return (
@@ -138,18 +160,10 @@ export default function ImageLightbox({ src, alt, onClose }: ImageLightboxProps)
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 select-none"
-        onClick={(e) => { if (e.target === e.currentTarget && scale <= 1) onClose(); }}
+        onClick={(e) => { if (e.target === e.currentTarget && scaleRef.current <= 1) onClose(); }}
       >
-        {/* Controls */}
+        {/* Top-right controls: reset (when zoomed) + close */}
         <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
-          <button onClick={() => setScale((s) => Math.min(5, +(s + 0.5).toFixed(1)))}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/25 backdrop-blur-sm transition-colors">
-            <ZoomIn size={18} />
-          </button>
-          <button onClick={() => setScale((s) => Math.max(0.5, +(s - 0.5).toFixed(1)))}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/25 backdrop-blur-sm transition-colors">
-            <ZoomOut size={18} />
-          </button>
           {scale !== 1 && (
             <button onClick={reset}
               className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/25 backdrop-blur-sm transition-colors">
@@ -162,31 +176,23 @@ export default function ImageLightbox({ src, alt, onClose }: ImageLightboxProps)
           </button>
         </div>
 
-        {/* Scale indicator */}
-        {scale !== 1 && (
-          <div className="pointer-events-none absolute bottom-16 left-1/2 z-10 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-xs font-bold text-white backdrop-blur-sm">
-            {Math.round(scale * 100)}%
-          </div>
-        )}
-
-        {/* Image container */}
+        {/* Image container — ref needed for non-passive touch listeners */}
         <div
+          ref={containerRef}
           className="flex h-full w-full items-center justify-center overflow-hidden"
+          style={{ touchAction: "none" }}
           onWheel={handleWheel}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
         >
           <motion.img
             src={src}
             alt={alt || "Image"}
-            initial={{ scale: 0.92, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", damping: 22, stiffness: 220 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.18 }}
             style={{
               transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`,
               cursor: scale > 1 ? (isDragging ? "grabbing" : "grab") : "default",
-              transition: isDragging ? "none" : "transform 0.18s ease",
+              transition: isDragging ? "none" : "transform 0.15s ease",
               maxWidth: "95vw",
               maxHeight: "92vh",
               objectFit: "contain",
@@ -194,20 +200,10 @@ export default function ImageLightbox({ src, alt, onClose }: ImageLightboxProps)
               touchAction: "none",
             }}
             draggable={false}
-            onDoubleClick={handleDoubleClick}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
           />
-        </div>
-
-        {/* Hints */}
-        <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 text-center">
-          {scale === 1 ? (
-            <p className="text-[11px] text-white/35">Double-tap to zoom · Pinch to zoom · Ctrl+Scroll (desktop)</p>
-          ) : (
-            <p className="text-[11px] text-white/35">Double-tap to reset</p>
-          )}
         </div>
       </motion.div>
     </AnimatePresence>

@@ -21,13 +21,11 @@ import {
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import useSWR from "swr";
+import { fetcherWithError } from "@/lib/fetcher";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
+import { PageSkeleton } from "@/app/components/ui/Skeleton";
 
-const fetcher = (url: string) => fetch(url).then((res) => {
-  if (!res.ok) throw new Error("Failed to fetch");
-  return res.json();
-});
 
 // Inline translation maps for the layout
 const layoutT: Record<string, Record<string, string>> = {
@@ -40,14 +38,14 @@ export default function ResidentLayout({ children }: { children: ReactNode }) {
   const [showSecurityMenu, setShowSecurityMenu] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
-  const { data: me, error } = useSWR("/api/profile?action=me", fetcher, {
+  const { data: me, error } = useSWR("/api/profile?action=me", fetcherWithError, {
     revalidateOnFocus: false,
     dedupingInterval: 10000,
   });
 
   const { data: unreadNotif, mutate: mutateUnreadNotif } = useSWR<{ count: number }>(
     "/api/notifications?action=unread_count",
-    fetcher,
+    fetcherWithError,
     {
       revalidateOnFocus: true,
       dedupingInterval: 5000,
@@ -144,6 +142,26 @@ export default function ResidentLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     setIsSidebarOpen(false);
   }, [pathname]);
+
+  // Handle Android back gesture: push history entry when sidebar opens
+  // so swiping back closes it instead of navigating away.
+  useEffect(() => {
+    if (!isSidebarOpen) return;
+
+    window.history.pushState({ __drawer: "sidebar" }, "");
+
+    const onPopState = () => {
+      setIsSidebarOpen(false);
+    };
+
+    window.addEventListener("popstate", onPopState);
+    return () => {
+      window.removeEventListener("popstate", onPopState);
+      if (window.history.state?.__drawer === "sidebar") {
+        window.history.replaceState(null, "");
+      }
+    };
+  }, [isSidebarOpen]);
 
   const bottomTabs = [
     { label: tl("home"), href: "/feed", icon: Home },
@@ -390,7 +408,7 @@ export default function ResidentLayout({ children }: { children: ReactNode }) {
 
       {/* Main Content */}
       <main className={`flex-1 ${pathname === "/verify-account" ? "pb-0" : "pb-16"} ${pathname?.startsWith("/profile/") ? "-mt-14" : ""}`}>
-        {children}
+        {!me && !error ? <PageSkeleton /> : children}
       </main>
 
       {/* Bottom Tab Navigation — hidden on verify-account */}

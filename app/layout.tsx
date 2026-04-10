@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 import ThemeProvider from "@/app/components/ThemeProvider";
 import ServiceWorkerRegistration from "@/app/components/ServiceWorkerRegistration";
+import MobileNavGuard from "@/app/components/MobileNavGuard";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 
@@ -18,10 +19,9 @@ export const metadata = {
   },
   icons: {
     icon: [
-      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/icon.png", sizes: "512x512", type: "image/png" },
     ],
-    apple: "/icons/icon-152.png",
+    apple: "/icon.png",
   },
 };
 
@@ -30,6 +30,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en" className={cn("font-sans", geist.variable)}>
       <body className="min-h-screen bg-white text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100">
         <ServiceWorkerRegistration />
+        <MobileNavGuard />
         <ThemeProvider />
         {children}
       </body>

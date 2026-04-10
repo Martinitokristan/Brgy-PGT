@@ -20,9 +20,9 @@ import {
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
+import { PageSkeleton } from "@/app/components/ui/Skeleton";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
-const countFetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -32,7 +32,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     revalidateOnFocus: false,
     dedupingInterval: 10000,
   });
-  const { data: notifData } = useSWR("/api/notifications?action=unread_count", countFetcher, {
+  const { data: notifData } = useSWR("/api/notifications?action=unread_count", fetcher, {
     refreshInterval: 60000,
     revalidateOnFocus: false,
     dedupingInterval: 30000,
@@ -198,7 +198,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
         <main className="flex-1 overflow-x-hidden bg-slate-50/50 dark:bg-slate-950 p-4 lg:p-8">
           <div className="mx-auto w-full max-w-7xl">
-            {children}
+            {!me ? <PageSkeleton /> : children}
           </div>
         </main>
       </div>

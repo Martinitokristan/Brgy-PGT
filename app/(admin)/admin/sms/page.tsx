@@ -1,6 +1,7 @@
 "use client";
 
 import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
 import { FormEvent, useState } from "react";
 import { Send, History } from "lucide-react";
 
@@ -16,7 +17,6 @@ type SmsLog = {
   created_at: string | null;
 };
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 function formatDateTime(d: string | null) {
   if (!d) return "";

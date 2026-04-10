@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import useSWR from "swr";
-import Link from "next/link";
+import { formatRelativeTime } from "@/app/utils/dateUtils";
+import { fetcherWithError } from "@/lib/fetcher";
 import { useToast, ToastContainer } from "@/app/components/ui/toast";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -81,10 +82,6 @@ type ProfileData = {
   is_following: boolean;
 };
 
-const fetcher = (url: string) => fetch(url).then((res) => {
-  if (!res.ok) throw new Error("Failed to fetch");
-  return res.json();
-});
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 
@@ -124,11 +121,11 @@ function formatPhoneForDisplay(raw: string | null | undefined) {
 }
 
 export default function ProfileView({ userId }: { userId: string }) {
-  const { data: profile, mutate, isLoading: profileLoading } = useSWR<ProfileData>(userId ? `/api/profile/${userId}` : null, fetcher, {
+  const { data: profile, mutate, isLoading: profileLoading } = useSWR<ProfileData>(userId ? `/api/profile/${userId}` : null, fetcherWithError, {
     revalidateOnFocus: false,
     dedupingInterval: 5000,
   });
-  const { data: me } = useSWR("/api/profile?action=me", fetcher, {
+  const { data: me } = useSWR("/api/profile?action=me", fetcherWithError, {
     revalidateOnFocus: false,
     dedupingInterval: 10000,
   });

@@ -54,10 +54,20 @@ export default function RegisterPage() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      let token = window.localStorage.getItem("device_token");
+      const getDeviceToken = () => {
+        const match = document.cookie.match(/device_token=([^;]+)/);
+        return match ? match[1] : null;
+      };
+      
+      const setDeviceTokenCookie = (token: string) => {
+        const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+        document.cookie = `device_token=${token}; path=/; expires=${expires.toUTCString()}; SameSite=Lax`;
+      };
+      
+      let token = getDeviceToken();
       if (!token) {
         token = self.crypto.randomUUID();
-        window.localStorage.setItem("device_token", token);
+        setDeviceTokenCookie(token);
       }
       setDeviceToken(token);
     }

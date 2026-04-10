@@ -7,6 +7,8 @@ import useSWR from "swr";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { formatRelativeTime } from "@/app/utils/dateUtils";
+import { fetcher } from "@/lib/fetcher";
+import { CommentListSkeleton } from "@/app/components/ui/Skeleton";
 
 type Comment = {
   id: number;
@@ -20,8 +22,6 @@ type Comment = {
   profiles: { name: string; avatar?: string } | null;
   created_at: string;
 };
-
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 interface CommentDrawerProps {
   postId: number | null;
@@ -67,6 +67,26 @@ export default function CommentDrawer({ postId, isOpen, onClose, me, highlightCo
       body.style.paddingRight = prevPaddingRight;
     };
   }, [isOpen]);
+
+  // Handle Android back gesture: push history entry when drawer opens
+  // so swiping back closes it instead of navigating away.
+  useEffect(() => {
+    if (!isOpen) return;
+
+    window.history.pushState({ __drawer: "comments" }, "");
+
+    const onPopState = () => {
+      onClose();
+    };
+
+    window.addEventListener("popstate", onPopState);
+    return () => {
+      window.removeEventListener("popstate", onPopState);
+      if (window.history.state?.__drawer === "comments") {
+        window.history.replaceState(null, "");
+      }
+    };
+  }, [isOpen, onClose]);
 
   // Real-time
   useEffect(() => {
@@ -192,15 +212,23 @@ export default function CommentDrawer({ postId, isOpen, onClose, me, highlightCo
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px]"
+            className="fixed inset-0 z-50 bg-black/50"
           />
           <motion.div
-            initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "tween", ease: [0.25, 0.46, 0.45, 0.94], duration: 0.28 }}
             drag={disableDrawerDrag ? false : "y"}
-            dragConstraints={{ top: 0 }}
-            dragElastic={0.2}
-            onDragEnd={(_, info) => { if (info.offset.y > 150) onClose(); }}
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0, bottom: 0.3 }}
+            dragMomentum={false}
+            onDragEnd={(_, info) => {
+              if (info.offset.y > 120 || (info.velocity.y > 500 && info.offset.y > 40)) {
+                onClose();
+              }
+            }}
+            style={{ willChange: "transform" }}
             className="fixed inset-x-0 bottom-0 z-[60] flex h-[88vh] flex-col rounded-t-[20px] bg-white dark:bg-slate-900 shadow-2xl sm:h-[75vh]"
           >
             {/* Handle */}
@@ -220,7 +248,9 @@ export default function CommentDrawer({ postId, isOpen, onClose, me, highlightCo
 
             {/* Comments list */}
             <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
-              {rootComments.length === 0 ? (
+              {!comments ? (
+                <CommentListSkeleton />
+              ) : rootComments.length === 0 ? (
                 <div className="flex h-full flex-col items-center justify-center py-20 text-center">
                   <p className="text-[15px] font-medium text-slate-400">No comments yet. Be the first!</p>
                 </div>

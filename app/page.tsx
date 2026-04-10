@@ -37,15 +37,26 @@ export default function LandingPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    let token = window.localStorage.getItem("device_token");
+    
+    const getDeviceToken = () => {
+      const match = document.cookie.match(/device_token=([^;]+)/);
+      return match ? match[1] : null;
+    };
+    
+    const setDeviceTokenCookie = (token: string) => {
+      const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+      document.cookie = `device_token=${token}; path=/; expires=${expires.toUTCString()}; SameSite=Lax`;
+    };
+    
+    let token = getDeviceToken();
     if (!token) {
       token = (typeof self.crypto?.randomUUID === "function")
         ? self.crypto.randomUUID()
         : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-          const r = (Math.random() * 16) | 0;
-          return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
-        });
-      window.localStorage.setItem("device_token", token);
+            const r = (Math.random() * 16) | 0;
+            return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+          });
+      setDeviceTokenCookie(token);
     }
     setDeviceToken(token);
   }, []);
@@ -155,9 +166,7 @@ export default function LandingPage() {
       {/* Navbar */}
       <nav className="sticky top-0 z-50 flex items-center justify-between border-b border-slate-100 bg-white/95 px-4 py-3 backdrop-blur-sm">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-600 shadow-md">
-            <ShieldCheck className="h-4 w-4 text-white" />
-          </div>
+          <img src="/icon.png" alt="BarangayPGT" className="h-8 w-8 shrink-0 rounded-xl shadow-md" />
           <span className="truncate text-[15px] font-extrabold text-slate-900">BarangayPGT</span>
         </div>
         <div className="flex shrink-0 items-center gap-1.5 ml-2">
@@ -183,9 +192,7 @@ export default function LandingPage() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(67,56,202,0.3),transparent_60%)]" />
 
         <div className="relative mx-auto max-w-lg">
-          <div className="logo-badge mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-[24px] bg-white shadow-2xl shadow-blue-900/40">
-            <Megaphone className="h-10 w-10 text-[#1e3a8a]" />
-          </div>
+          <img src="/icon.png" alt="BarangayPGT Logo" className="logo-badge mx-auto mb-6 h-20 w-20 rounded-[24px] shadow-2xl shadow-blue-900/40" />
           <p className="mb-3 text-[11px] font-black uppercase tracking-[0.2em] text-blue-300">Online Complaint &amp; Community Network</p>
           <h1 className="text-[32px] font-black leading-tight text-white drop-shadow-sm">
             Report. Connect.<br />Get Heard.
@@ -198,7 +205,7 @@ export default function LandingPage() {
               href="/register"
               className="flex items-center justify-center gap-2 rounded-2xl bg-white px-7 py-3.5 text-[15px] font-black text-[#1e3a8a] shadow-xl shadow-blue-900/30 hover:bg-blue-50 transition-colors"
             >
-              Register for Free
+              Register Now
               <ArrowRight className="h-4 w-4" />
             </Link>
             <button
@@ -300,25 +307,23 @@ export default function LandingPage() {
       <section className="bg-gradient-to-br from-[#1e3a8a] to-[#312e81] px-6 py-16 text-center">
         <div className="mx-auto max-w-sm">
           <h2 className="text-[24px] font-black text-white">Have a concern?</h2>
-          <p className="mt-2 text-[14px] text-blue-100">Register now for free and let your barangay know. Your complaints and concerns deserve to be heard.</p>
+          <p className="mt-2 text-[14px] text-blue-100">Register now  and let your barangay know. Your complaints and concerns deserve to be heard.</p>
           <Button asChild size="lg" className="bg-white text-[#1e3a8a] shadow-xl hover:bg-blue-50">
             <Link href="/register">
-              Register for Free
+              Register Now
               <ChevronRight className="h-4 w-4 ml-2" />
             </Link>
           </Button>
-          <p className="mt-3 text-[11px] text-blue-300/60">No payment required. Exclusive for Brgy. Pagatpatan residents.</p>
+          <p className="mt-3 text-[11px] text-blue-300/60">Exclusive for Brgy. Pagatpatan residents.</p>
         </div>
       </section>
-
+              
       {/* Footer */}
       <footer className="border-t border-slate-100 bg-white px-5 py-8">
         <div className="mx-auto max-w-lg">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#1e3a8a]">
-                <ShieldCheck className="h-4 w-4 text-white" />
-              </div>
+              <img src="/icon.png" alt="BarangayPGT" className="h-7 w-7 rounded-lg" />
               <span className="text-[14px] font-bold text-slate-700">BarangayPGT</span>
             </div>
             <div className="flex items-center gap-4">
@@ -326,7 +331,7 @@ export default function LandingPage() {
               <Link href="/help" className="text-[12px] text-slate-400 hover:text-slate-600">Help</Link>
             </div>
           </div>
-          <p className="mt-4 text-[11px] text-slate-300">
+          <p className="mt-4 text-[11px] text-slate-500">
             © 2026 Barangay Pagatpatan, Butuan City. All rights reserved.
           </p>
         </div>

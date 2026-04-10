@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { Calendar, MapPin, Clock, Bookmark, Check, Users, Search, X, ChevronRight } from "lucide-react";
+import { Bookmark, Check, MapPin, Search, X, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useT } from "@/lib/useT";
+import { fetcherWithError } from "@/lib/fetcher";
 
 type Event = {
   id: number;
@@ -19,10 +20,6 @@ type Event = {
   reminder_10h_sent: boolean;
 };
 
-const fetcher = (url: string) => fetch(url).then((res) => {
-  if (!res.ok) throw new Error("Failed to fetch");
-  return res.json();
-});
 
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString("en-US", {
@@ -52,7 +49,7 @@ function formatSavedDate(d: string) {
 }
 
 export default function SavedEventsPage() {
-  const { data: events, error, isLoading, mutate } = useSWR<Event[]>("/api/saved-events", fetcher);
+  const { data: events, error, isLoading, mutate } = useSWR<Event[]>("/api/saved-events", fetcherWithError);
   const [searchQuery, setSearchQuery] = useState("");
   const { t } = useT();
 

@@ -1,6 +1,7 @@
 "use client";
 
 import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
 import { Bell } from "lucide-react";
 
 type Notification = {
@@ -12,7 +13,6 @@ type Notification = {
   post_id?: number | null;
 };
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr);

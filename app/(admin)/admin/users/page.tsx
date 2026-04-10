@@ -1,6 +1,7 @@
 "use client";
 
 import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
 import { useState } from "react";
 import {  Phone,
   MapPin,
@@ -79,7 +80,6 @@ const ID_TYPE_LABELS: Record<string, string> = {
   philhealth_id: "PhilHealth ID",
 };
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 const AVATAR_COLORS = [
   "bg-blue-500",
