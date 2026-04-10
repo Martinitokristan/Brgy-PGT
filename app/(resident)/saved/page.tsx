@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { Bookmark, Check, MapPin, Search, X, ChevronRight } from "lucide-react";
+import { Bookmark, Calendar, Check, Clock, MapPin, Search, Users, X, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useT } from "@/lib/useT";
 import { fetcherWithError } from "@/lib/fetcher";
