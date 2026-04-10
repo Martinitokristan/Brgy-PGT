@@ -3,8 +3,6 @@
 import useSWR from "swr";
 import Link from "next/link";
 import {
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
   FileText,
   Users,
   AlertTriangle,
@@ -13,6 +11,8 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
   Activity,
   Calendar,
 } from "lucide-react";
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 
 type Stats = {

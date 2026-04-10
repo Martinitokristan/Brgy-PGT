@@ -18,6 +18,9 @@ export function createSupabaseServiceClient() {
       autoRefreshToken: false,
       persistSession: false,
     },
+    db: {
+      schema: "public",
+    },
   });
 }
 

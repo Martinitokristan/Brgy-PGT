@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import useSWR from "swr";
 import { formatRelativeTime } from "@/app/utils/dateUtils";
 import { useToast, ToastContainer } from "@/app/components/ui/toast";
@@ -32,6 +32,12 @@ import {
 } from "lucide-react";
 import CommentDrawer from "@/app/components/ui/CommentDrawer";
 import { PostStatusBadge } from "@/app/components/post/PostStatusBadge";
+import { ReactionBar } from "@/app/components/post/ReactionBar";
+import { REACTION_EMOJIS, PostVariant } from "@/lib/types";
+import VideoLightbox from "@/app/components/ui/VideoLightbox";
+import ImageLightbox from "@/app/components/ui/ImageLightbox";
+import { getPostVideoUrl } from "@/lib/utils/storage";
+import { Volume2, VolumeX, Play } from "lucide-react";
 import { useT } from "@/lib/useT";
 
 const fetcher = (url: string) => fetch(url).then((res) => { if (!res.ok) throw new Error('Failed to fetch'); return res.json(); });
@@ -46,6 +52,7 @@ type Post = {
   created_at: string;
   admin_response: string | null;
   image: string | null;
+  video?: string | null;
   comment_count: number;
   reaction_counts: Record<string, number>;
   my_reaction: string | null;
@@ -68,10 +75,12 @@ type ProfileData = {
     role: string;
     avatar: string | null;
     cover_photo: string | null;
+    cover_photo_full: string | null;
     barangays: { name: string } | null;
     sex: string | null;
     birth_date: string | null;
     purok_address: string | null;
+    is_verified: boolean;
   };
   stats: {
     posts_count: number;
@@ -183,6 +192,79 @@ export default function ProfileView({ userId }: { userId: string }) {
   const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [showFollowMenu, setShowFollowMenu] = useState(false);
+  const [showingEmojiFor, setShowingEmojiFor] = useState<number | null>(null);
+  const [videoLightboxSrc, setVideoLightboxSrc] = useState<string | null>(null);
+  const [imageLightboxSrc, setImageLightboxSrc] = useState<string | null>(null);
+  const [videoStates, setVideoStates] = useState<Record<number, { isMuted: boolean; resumeTime: number; resumeWasPlaying: boolean }>>({});
+  const videoRefs = useRef<Record<number, HTMLVideoElement | null>>({});
+  
+  // Auto pause/resume videos while scrolling (Facebook-like)
+  useEffect(() => {
+    if (!profile?.posts) return;
+    
+    profile.posts.forEach((post) => {
+      if (!post.video) return;
+      const el = videoRefs.current[post.id];
+      if (!el) return;
+
+      const io = new IntersectionObserver(
+        (entries) => {
+          const entry = entries[0];
+          if (!entry) return;
+
+          if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+            // Try to resume (muted autoplay should be allowed on iOS/Android)
+            el.muted = true;
+            const p = el.play();
+            if (p && typeof (p as any).catch === "function") (p as Promise<void>).catch(() => {});
+          } else {
+            // Pause when mostly out of view to save CPU/battery
+            el.pause();
+          }
+        },
+        { threshold: [0, 0.2, 0.6, 1] }
+      );
+
+      io.observe(el);
+      return () => io.disconnect();
+    });
+  }, [profile?.posts]);
+
+  // When fullscreen lightbox closes, resume inline playback without restarting
+  useEffect(() => {
+    if (!profile?.posts) return;
+
+    const onClose = (ev: Event) => {
+      const detail = (ev as CustomEvent).detail as { src?: string; currentTime?: number } | undefined;
+      if (!detail?.src) return;
+
+      // Find the post with this video
+      const post = profile.posts.find(p => p.video && getPostVideoUrl(p.video) === detail.src);
+      if (!post) return;
+
+      const el = videoRefs.current[post.id];
+      if (!el) return;
+
+      // Restore time from fullscreen (or the last known inline time)
+      const t = typeof detail.currentTime === "number" ? detail.currentTime : videoStates[post.id]?.resumeTime ?? 0;
+      if (Number.isFinite(t) && t >= 0) {
+        try {
+          el.currentTime = t;
+        } catch {}
+      }
+
+      // Never resume with unexpected sound: follow the in-feed mute state
+      el.muted = videoStates[post.id]?.isMuted ?? true;
+
+      if (videoStates[post.id]?.resumeWasPlaying) {
+        const p = el.play();
+        if (p && typeof (p as any).catch === "function") (p as Promise<void>).catch(() => {});
+      }
+    };
+
+    window.addEventListener("video-lightbox-close", onClose as EventListener);
+    return () => window.removeEventListener("video-lightbox-close", onClose as EventListener);
+  }, [profile?.posts, videoStates]);
   
   const [menuOpenPostId, setMenuOpenPostId] = useState<number | null>(null);
   const [isSuspending, setIsSuspending] = useState(false);
@@ -198,15 +280,21 @@ export default function ProfileView({ userId }: { userId: string }) {
     isOpen: boolean;
     file: File | null;
     type: "avatar" | "cover_photo" | null;
+    originalFile?: File | null;
   }>({ isOpen: false, file: null, type: null });
 
-  function handlePhotoUpload(file: File, type: "avatar" | "cover_photo") {
+  function handlePhotoUpload(file: File, type: "avatar" | "cover_photo", originalFile?: File) {
     const which = type === "avatar" ? "avatar" : "cover";
     setUploadingPhoto(which);
     setUploadProgress(0);
 
     const fd = new FormData();
     fd.append(type, file);
+    
+    // For cover photos, also upload the original full image
+    if (type === "cover_photo" && originalFile) {
+      fd.append("cover_photo_full", originalFile);
+    }
 
     const xhr = new XMLHttpRequest();
     xhr.open("PATCH", "/api/profile");
@@ -223,7 +311,7 @@ export default function ProfileView({ userId }: { userId: string }) {
   }
 
   function openCrop(file: File, type: "avatar" | "cover_photo") {
-    setCropState({ isOpen: true, file, type });
+    setCropState({ isOpen: true, file, type, originalFile: file });
   }
 
   if (profileLoading) return (
@@ -320,7 +408,7 @@ export default function ProfileView({ userId }: { userId: string }) {
     }
   };
 
-  const handleShare = () => {
+  const handleShareProfile = () => {
     const url = window.location.origin + `/profile/${user.id}`;
     if (navigator.share) {
       navigator.share({ title: user.name, url });
@@ -364,6 +452,43 @@ export default function ProfileView({ userId }: { userId: string }) {
       mutate();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleShare = (postId: number) => {
+    const url = `${window.location.origin}/posts/${postId}`;
+    if (navigator.share) {
+      navigator.share({ title: "Post", url });
+    } else {
+      navigator.clipboard.writeText(url);
+      addToast("Link copied!");
+    }
+  };
+
+  const toggleVideoMute = (postId: number) => {
+    setVideoStates(prev => ({
+      ...prev,
+      [postId]: { ...prev[postId], isMuted: !prev[postId]?.isMuted }
+    }));
+  };
+
+  const handleVideoClick = (postId: number) => {
+    const el = videoRefs.current[postId];
+    if (!el) return;
+    
+    const src = getPostVideoUrl(posts.find(p => p.id === postId)?.video || "");
+    if (src) {
+      // Save current time and playing state before opening lightbox
+      setVideoStates(prev => ({
+        ...prev,
+        [postId]: {
+          isMuted: prev[postId]?.isMuted ?? true,
+          resumeTime: el.currentTime || 0,
+          resumeWasPlaying: !el.paused
+        }
+      }));
+      el.pause();
+      setVideoLightboxSrc(src);
     }
   };
 
@@ -427,7 +552,14 @@ export default function ProfileView({ userId }: { userId: string }) {
     <div className="relative flex flex-1 flex-col bg-white dark:bg-slate-950 min-h-screen overflow-x-hidden">
 
       {/* ── Cover photo – full width, taller so it visually extends behind the avatar ── */}
-      <div className="relative h-52 w-full overflow-hidden bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 sm:h-64">
+      <div 
+        className="relative h-52 w-full overflow-hidden bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 sm:h-64 cursor-pointer"
+        onClick={() => {
+          const fullCoverUrl = user.cover_photo_full ? `${SUPABASE_URL}/storage/v1/object/public/profile-covers/${user.cover_photo_full}` : null;
+          const coverUrl = getCoverUrl(user.cover_photo);
+          setImageLightboxSrc(fullCoverUrl || coverUrl || '');
+        }}
+      >
         {getCoverUrl(user.cover_photo) && (
           <img src={getCoverUrl(user.cover_photo)!} alt="" className="h-full w-full object-cover" />
         )}
@@ -456,7 +588,10 @@ export default function ProfileView({ userId }: { userId: string }) {
         {/* Avatar – centred, half overlaps the cover */}
         <div className="flex flex-col items-center">
           <div className="relative -mt-16 mb-3 flex h-32 w-32 items-center justify-center sm:h-36 sm:w-36 sm:-mt-[72px]">
-            <div className="relative h-full w-full overflow-hidden rounded-full border-4 border-white dark:border-slate-900 bg-slate-100 dark:bg-slate-800 shadow-xl">
+            <div 
+              className="relative h-full w-full overflow-hidden rounded-full border-4 border-white dark:border-slate-900 bg-slate-100 dark:bg-slate-800 shadow-xl cursor-pointer"
+              onClick={() => getAvatarUrl(user.avatar) && setImageLightboxSrc(getAvatarUrl(user.avatar)!)}
+            >
               {getAvatarUrl(user.avatar) ? (
                 <img src={getAvatarUrl(user.avatar)!} alt={user.name} className="h-full w-full object-cover" />
               ) : (
@@ -574,7 +709,7 @@ export default function ProfileView({ userId }: { userId: string }) {
                 <Send className="h-4 w-4" /><span>{isSendingSms ? t("sending") : t("send_sms")}</span>
               </button>
             )}
-            <button onClick={handleShare} className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 transition-all hover:bg-slate-100 active:scale-90">
+            <button onClick={handleShareProfile} className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 transition-all hover:bg-slate-100 active:scale-90">
               <ShareIcon className="h-6 w-6" />
             </button>
           </div>
@@ -747,14 +882,44 @@ export default function ProfileView({ userId }: { userId: string }) {
                           <p className="line-clamp-3 text-[14px] font-medium leading-relaxed text-slate-500/80 dark:text-slate-400">
                             {post.description}
                           </p>
-                          {post.image && (
-                            <div className="mt-3 overflow-hidden rounded-2xl">
-                              <img
-                                src={`${SUPABASE_URL}/storage/v1/object/public/post-images/${post.image}`}
-                                alt="Post image"
-                                className="w-full object-cover max-h-80"
-                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                              />
+                          {(post.video || post.image) && (
+                            <div className="mt-3 relative overflow-hidden rounded-2xl cursor-pointer bg-slate-100 dark:bg-slate-800">
+                              {post.video ? (
+                                <>
+                                  <video
+                                    ref={(el) => { videoRefs.current[post.id] = el; }}
+                                    src={getPostVideoUrl(post.video) || undefined}
+                                    className="w-full max-h-[520px] object-contain"
+                                    muted={videoStates[post.id]?.isMuted ?? true}
+                                    autoPlay={false}
+                                    loop={false}
+                                    playsInline
+                                    controls={false}
+                                    preload="metadata"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleVideoClick(post.id);
+                                    }}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleVideoMute(post.id);
+                                    }}
+                                    className="absolute bottom-3 right-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm hover:bg-black/55 transition-colors"
+                                  >
+                                    {videoStates[post.id]?.isMuted ?? true ? <VolumeX size={18} /> : <Volume2 size={18} />}
+                                  </button>
+                                </>
+                              ) : post.image && (
+                                <img
+                                  src={`${SUPABASE_URL}/storage/v1/object/public/post-images/${post.image}`}
+                                  alt="Post image"
+                                  className="w-full object-cover max-h-80"
+                                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                />
+                              )}
                             </div>
                           )}
                         </>
@@ -770,52 +935,16 @@ export default function ProfileView({ userId }: { userId: string }) {
 
                     {/* Interaction Section */}
                     <div className="mt-6" onClick={(e) => e.stopPropagation()}>
-                      {/* Count Row */}
-                      <div className="flex justify-end border-b border-slate-50 dark:border-slate-700 pb-2 px-1">
-                        {post.comment_count > 0 && (
-                          <button 
-                            onClick={() => openComments(post.id)}
-                            className="text-[12px] font-medium text-slate-500 hover:underline"
-                          >
-                            {post.comment_count} {t("comments")}
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Buttons Row */}
-                      <div className="grid grid-cols-3 gap-1 pt-1 sm:gap-2">
-                        <button 
-                          onClick={() => handleReact(post.id, "like")}
-                          className={`flex min-w-0 items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-bold transition-all hover:bg-slate-50 dark:hover:bg-slate-800 sm:gap-2 sm:text-[14px] ${
-                            post.my_reaction === "like" ? "text-blue-600" : "text-[#65676B] dark:text-slate-400"
-                          }`}
-                        >
-                          <ThumbsUp size={18} className={`shrink-0 ${post.my_reaction === "like" ? "fill-current" : ""}`} />
-                          <span className="truncate">{t("like")}</span>
-                        </button>
-                        <button 
-                          onClick={() => openComments(post.id)}
-                          className="flex min-w-0 items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-bold text-[#65676B] dark:text-slate-400 transition-all hover:bg-slate-50 dark:hover:bg-slate-800 sm:gap-2 sm:text-[14px]"
-                        >
-                          <MessageCircle size={18} className="shrink-0" /> 
-                          <span className="truncate">{t("comment")}</span>
-                        </button>
-                        <button 
-                          onClick={() => {
-                            const url = `${window.location.origin}/posts/${post.id}`;
-                            if (navigator.share) {
-                              navigator.share({ title: post.title || 'Post', url });
-                            } else {
-                              navigator.clipboard.writeText(url);
-                              alert("Link copied!");
-                            }
-                          }}
-                          className="flex min-w-0 items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-bold text-[#65676B] dark:text-slate-400 transition-all hover:bg-slate-50 dark:hover:bg-slate-800 sm:gap-2 sm:text-[14px]"
-                        >
-                          <ShareIcon className="h-[18px] w-[18px] shrink-0" /> 
-                          <span className="truncate">{t("share")}</span>
-                        </button>
-                      </div>
+                      <ReactionBar
+                        post={post}
+                        onReact={handleReact}
+                        onComment={openComments}
+                        onShare={handleShare}
+                        isVerified={user?.is_verified ?? false}
+                        variant="profile"
+                        showEmojiPicker={showingEmojiFor === post.id}
+                        onEmojiPickerToggle={setShowingEmojiFor}
+                      />
                     </div>
                   </div>
                 ))}
@@ -963,8 +1092,9 @@ export default function ProfileView({ userId }: { userId: string }) {
         onCancel={() => setCropState({ isOpen: false, file: null, type: null })}
         onConfirm={(croppedFile) => {
           const t = cropState.type;
+          const originalFile = cropState.originalFile;
           setCropState({ isOpen: false, file: null, type: null });
-          if (t) handlePhotoUpload(croppedFile, t);
+          if (t) handlePhotoUpload(croppedFile, t, originalFile);
         }}
       />
 
@@ -1029,7 +1159,15 @@ export default function ProfileView({ userId }: { userId: string }) {
            </div>
         </div>
       )}
-    <ToastContainer toasts={toasts} />
-  </div>
+      {/* Video Lightbox */}
+      {videoLightboxSrc && (
+        <VideoLightbox src={videoLightboxSrc} onClose={() => setVideoLightboxSrc(null)} />
+      )}
+      {/* Image Lightbox */}
+      {imageLightboxSrc && (
+        <ImageLightbox src={imageLightboxSrc} onClose={() => setImageLightboxSrc(null)} />
+      )}
+      <ToastContainer toasts={toasts} />
+    </div>
   );
 }

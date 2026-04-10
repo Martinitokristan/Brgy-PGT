@@ -182,10 +182,10 @@ export async function GET(_request: Request, props: Params) {
     isFollowing = (count ?? 0) > 0;
   }
 
-  // 4. Fetch User Posts (latest 20) — use counter cache columns for speed
+  // 4. Fetch User Posts (latest 20)
   const { data: posts } = await service
     .from("posts")
-    .select("id, title, description, purpose, urgency_level, status, created_at, admin_response, image, user_id, metadata, reaction_count, comment_count")
+    .select("id, title, description, purpose, urgency_level, status, created_at, admin_response, image, video, user_id, metadata")
     .eq("user_id", targetUserId)
     .order("created_at", { ascending: false })
     .limit(20);
@@ -202,11 +202,32 @@ export async function GET(_request: Request, props: Params) {
     for (const r of myReactions ?? []) myReactionsMap[r.post_id] = r.type;
   }
 
+  // Fetch reaction counts and comment counts for these posts
+  const reactionCountsMap: Record<number, number> = {};
+  const commentCountsMap: Record<number, number> = {};
+  if (postIdList.length > 0) {
+    const { data: allReactions } = await service
+      .from("reactions")
+      .select("post_id")
+      .in("post_id", postIdList);
+    for (const r of allReactions ?? []) {
+      reactionCountsMap[r.post_id] = (reactionCountsMap[r.post_id] ?? 0) + 1;
+    }
+
+    const { data: allComments } = await service
+      .from("comments")
+      .select("post_id")
+      .in("post_id", postIdList);
+    for (const c of allComments ?? []) {
+      commentCountsMap[c.post_id] = (commentCountsMap[c.post_id] ?? 0) + 1;
+    }
+  }
+
   const transformedPosts = (posts ?? []).map((post: any) => ({
     ...post,
-    reaction_counts: { total: post.reaction_count },
+    reaction_counts: { total: reactionCountsMap[post.id] ?? 0 },
     my_reaction: myReactionsMap[post.id] ?? null,
-    comment_count: post.comment_count,
+    comment_count: commentCountsMap[post.id] ?? 0,
   }));
 
   return NextResponse.json({

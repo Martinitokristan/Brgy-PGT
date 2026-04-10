@@ -141,22 +141,14 @@ export default function ImageCropModal(props: {
           />
         </div>
 
-        <div className="flex items-center gap-4 px-5 py-4">
-          <div className="flex-1">
-            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">
-              Zoom
-            </label>
-            <input
-              type="range"
-              min={1}
-              max={3}
-              step={0.01}
-              value={zoom}
-              onChange={(e) => setZoom(Number(e.target.value))}
-              className="mt-2 w-full accent-blue-600"
-            />
-          </div>
-
+        <div className="flex justify-end gap-3 px-5 py-4">
+          <button
+            onClick={() => !isSaving && onCancel()}
+            disabled={isSaving}
+            className="rounded-xl bg-slate-100 dark:bg-slate-800 px-5 py-2.5 text-[13px] font-bold text-slate-600 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50"
+          >
+            Cancel
+          </button>
           <button
             onClick={handleSave}
             disabled={!croppedAreaPixels || isSaving}
