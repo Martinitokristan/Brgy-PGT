@@ -45,6 +45,17 @@ type VerificationRequest = {
   selfie_url?: string;
   submitted_at: string;
   rejection_reason: string | null;
+  decision?: "auto_pass" | "manual_review" | "auto_fail" | null;
+  overall_score?: number | null;
+  hard_stop?: boolean | null;
+  hard_stop_reason?: string | null;
+  doc_auth_score?: number | null;
+  face_match_score?: number | null;
+  liveness_score?: number | null;
+  ocr_consistency_score?: number | null;
+  duplicate_risk_score?: number | null;
+  risk_flags?: string[] | null;
+  calibration_version?: string | null;
   profiles: {
     id: string;
     name: string | null;
@@ -244,10 +255,50 @@ export default function AdminUsersPage() {
                       <Clock className="h-3 w-3" />
                       {new Date(req.submitted_at).toLocaleDateString()}
                     </span>
+                    {typeof req.overall_score === "number" && (
+                      <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                        req.overall_score >= 80
+                          ? "bg-emerald-100 text-emerald-700"
+                          : req.overall_score >= 55
+                            ? "bg-blue-100 text-blue-700"
+                            : "bg-red-100 text-red-700"
+                      }`}>
+                        Score {req.overall_score}
+                      </span>
+                    )}
+                    {req.decision && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold text-slate-700">
+                        {req.decision.replaceAll("_", " ")}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
               <div className="border-t border-slate-50 px-6 pb-6 pt-4">
+                {req.risk_flags && req.risk_flags.length > 0 && (
+                  <div className="mb-3 rounded-xl bg-red-50 px-3 py-2 ring-1 ring-red-100">
+                    <p className="text-[11px] font-black uppercase tracking-wide text-red-700">Risk flags</p>
+                    <p className="mt-1 text-xs font-semibold text-red-600">{req.risk_flags.join(", ")}</p>
+                  </div>
+                )}
+                <div className="mb-3 grid grid-cols-2 gap-2 text-[11px]">
+                  <div className="rounded-xl bg-slate-50 px-3 py-2">
+                    <p className="font-black text-slate-400">Doc auth</p>
+                    <p className="font-bold text-slate-800">{req.doc_auth_score ?? "-"}</p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 px-3 py-2">
+                    <p className="font-black text-slate-400">Face match</p>
+                    <p className="font-bold text-slate-800">{req.face_match_score ?? "-"}</p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 px-3 py-2">
+                    <p className="font-black text-slate-400">Liveness</p>
+                    <p className="font-bold text-slate-800">{req.liveness_score ?? "-"}</p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 px-3 py-2">
+                    <p className="font-black text-slate-400">OCR consistency</p>
+                    <p className="font-bold text-slate-800">{req.ocr_consistency_score ?? "-"}</p>
+                  </div>
+                </div>
                 <div className="flex flex-wrap gap-2 mb-4">
                   <button
                     onClick={() => setViewingModal({ url: req.valid_id_url ?? "", title: "Valid ID" })}
@@ -290,7 +341,13 @@ export default function AdminUsersPage() {
                 <div className="flex gap-2">
                   <button
                     disabled={updating === String(req.id)}
-                    onClick={() => handleVerificationAction(req.id, "approve")}
+                    onClick={() => {
+                      if ((req.hard_stop || Number(req.overall_score ?? 0) < 80) && !rejectReason.trim()) {
+                        alert("Add an approval reason for risky verification requests.");
+                        return;
+                      }
+                      handleVerificationAction(req.id, "approve", rejectReason);
+                    }}
                     className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-black text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700 disabled:opacity-50"
                   >
                     <CheckCircle2 size={16} />
