@@ -1,7 +1,7 @@
 # Barangay PGT - Community Management System
 
 <div align="center">
-  <img src="public/icon.png" alt="Barangay PGT Logo" width="150">
+  <img src="app/icons.png" alt="Barangay PGT Logo" width="150">
 
   # Barangay PGT
 
