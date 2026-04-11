@@ -181,7 +181,9 @@ export default function LandingPage() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(67,56,202,0.3),transparent_60%)]" />
 
         <div className="relative mx-auto max-w-lg">
-          <img src="/icon.png" alt="BarangayPGT Logo" className="logo-badge mx-auto mb-6 h-20 w-20 rounded-[24px] shadow-2xl shadow-blue-900/40" />
+          <div className="logo-badge mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-[24px] bg-white shadow-2xl shadow-blue-900/40">
+            <Megaphone className="h-10 w-10 text-[#1e3a8a]" strokeWidth={2} />
+          </div>
           <p className="mb-3 text-[11px] font-black uppercase tracking-[0.2em] text-blue-300">Online Complaint &amp; Community Network</p>
           <h1 className="text-[32px] font-black leading-tight text-white drop-shadow-sm">
             Report. Connect.<br />Get Heard.
