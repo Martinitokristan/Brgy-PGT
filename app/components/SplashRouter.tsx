@@ -27,7 +27,6 @@ export default function SplashRouter({
         (window.navigator as any).standalone === true;
       setIsStandalone(pwaMode);
 
-      // If NOT running in PWA standalone mode
       if (!pwaMode) {
         if (isAuthenticated) {
           router.push(userRole === "admin" ? "/admin/dashboard" : "/feed");
@@ -40,75 +39,64 @@ export default function SplashRouter({
 
   useEffect(() => {
     async function runSplashAnimation() {
-      if (isStandalone !== true) return; // Only run if confirmed standalone
+      if (isStandalone !== true) return;
 
-      // 1. Roll in from the right. We start at x: "100vw" and rotate: 450 (which is 360 + 90)
-      // As it translates to x: 0, it rotates counter-clockwise to 90 degrees.
+      // 1. Simply fade in
       await controls.start({
-        x: 0,
-        rotate: 90,
-        transition: { duration: 1.0, ease: "backOut" },
+        opacity: 1,
+        scale: 1,
+        transition: { duration: 0.5, ease: "easeOut" },
       });
 
-      // Brief pause at 90 degrees
-      await new Promise((r) => setTimeout(r, 200));
+      // Show the beautifully simple splash for a smooth 1.5 seconds
+      await new Promise((r) => setTimeout(r, 1500));
 
-      // 2. Fix the B! Rotate from 90 to 0 (upright)
+      // 2. Fade out slightly as we transition
       await controls.start({
-        rotate: 0,
-        transition: { type: "spring", stiffness: 260, damping: 20 },
-      });
-
-      // Pause briefly upright, looking perfect
-      await new Promise((r) => setTimeout(r, 400));
-
-      // 3. Zoom into the app
-      await controls.start({
-        scale: 30,
         opacity: 0,
-        transition: { duration: 0.6, ease: "anticipate" },
+        scale: 1.05,
+        transition: { duration: 0.4, ease: "easeInOut" },
       });
 
-      // 4. Complete the routing
       if (isAuthenticated) {
         router.push(userRole === "admin" ? "/admin/dashboard" : "/feed");
       } else {
-        setShowSplash(false); // Reveal the landing page!
+        setShowSplash(false);
       }
     }
 
     runSplashAnimation();
   }, [isStandalone, controls, isAuthenticated, userRole, router]);
 
-  // While determining standalone state, avoid flashing the landing page
   if (isStandalone === null) {
     return (
       <div className="fixed inset-0 z-[9999] bg-gradient-to-br from-[#1e3a8a] to-[#312e81]" />
     );
   }
 
-  // If we decided not to show the splash screen (e.g. Chrome tab)
   if (!isStandalone) {
     return showSplash ? null : <>{children}</>;
   }
 
-  // If the animation finished and user is not auth
   if (!showSplash) {
     return <>{children}</>;
   }
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden bg-gradient-to-br from-[#1e3a8a] to-[#312e81]">
+    <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-[#1e3a8a] to-[#312e81]">
       <motion.div
-        initial={{ x: "100vw", rotate: 450, scale: 1 }}
+        className="flex flex-col items-center justify-center gap-4"
+        initial={{ opacity: 0, scale: 0.95 }}
         animate={controls}
       >
         <img
-          // We use the imported source or standard public route. Using the 512x512 PWA icon.
           src="/icon.png"
           alt="BarangayPGT Logo"
           className="h-32 w-32 drop-shadow-2xl rounded-3xl"
         />
+        <h1 className="text-3xl font-black text-white tracking-wide drop-shadow-lg text-center px-4">
+          Barangay Pagatpatan
+        </h1>
       </motion.div>
     </div>
   );
