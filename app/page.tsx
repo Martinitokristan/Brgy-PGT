@@ -42,9 +42,9 @@ export default function LandingPage() {
       token = (typeof self.crypto?.randomUUID === "function")
         ? self.crypto.randomUUID()
         : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-            const r = (Math.random() * 16) | 0;
-            return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
-          });
+          const r = (Math.random() * 16) | 0;
+          return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+        });
       window.localStorage.setItem("device_token", token);
     }
     setDeviceToken(token);
@@ -306,7 +306,7 @@ export default function LandingPage() {
           <p className="mt-3 text-[11px] text-blue-300/60">Exclusive for Brgy. Pagatpatan residents.</p>
         </div>
       </section>
-              
+
       {/* Footer */}
       <footer className="border-t border-slate-100 bg-white px-5 py-8">
         <div className="mx-auto max-w-lg">
