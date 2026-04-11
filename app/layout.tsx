@@ -8,6 +8,10 @@ import { cn } from "@/lib/utils";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
+export const viewport = {
+  themeColor: "#1e40af",
+};
+
 export const metadata = {
   title: "Barangay Pagatpatan",
   description: "The official digital platform for Barangay Pagatpatan residents",
@@ -18,9 +22,7 @@ export const metadata = {
     title: "BrgyPGT",
   },
   icons: {
-    icon: [
-      { url: "/icon.png", sizes: "512x512", type: "image/png" },
-    ],
+    icon: "/favicon.png",
     apple: "/icon.png",
   },
 };
