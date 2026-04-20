@@ -30,11 +30,15 @@ export const metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={cn("font-sans", geist.variable)}>
-      <body className="min-h-screen bg-white text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100">
+      <body className="min-h-screen bg-slate-200 dark:bg-slate-900 text-slate-900 antialiased dark:text-slate-100">
         <ServiceWorkerRegistration />
         <MobileNavGuard />
         <ThemeProvider />
-        {children}
+        
+        {/* We rely on route group layouts to construct the max-width wrappers because admin panel requires full width */}
+        <div className="w-full min-h-screen flex flex-col">
+          {children}
+        </div>
       </body>
     </html>
   );

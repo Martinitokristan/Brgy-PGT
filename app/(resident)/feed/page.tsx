@@ -250,40 +250,43 @@ export default function FeedPage() {
             )}
 
             {posts.map((post) => (
-              <PostCard
-                key={post.id}
-                post={post}
-                variant="resident"
-                onImageClick={setLightboxSrc}
-                onVideoClick={setVideoLightboxSrc}
-                isOwn={post.user_id === me?.id}
-                autoplayVideos={me?.autoplay_videos ?? true}
-                onToggleAutoplayVideos={handleToggleAutoplay}
-                onDelete={handleDeletePost}
-                onEdit={setEditingPost}
-              >
-                <ReactionBar
+              <div key={post.id} className="relative flex flex-col gap-0">
+                <PostCard
                   post={post}
-                  onReact={reactions.handleReact}
-                  onComment={openComments}
-                  onShare={handleShare}
-                  isVerified={!!(me?.is_verified || me?.role === "admin")}
                   variant="resident"
-                  showEmojiPicker={showingEmojiFor === post.id}
-                  onEmojiPickerToggle={setShowingEmojiFor}
-                />
-              </PostCard>
+                  onImageClick={setLightboxSrc}
+                  onVideoClick={setVideoLightboxSrc}
+                  isOwn={post.user_id === me?.id}
+                  autoplayVideos={me?.autoplay_videos ?? true}
+                  onToggleAutoplayVideos={handleToggleAutoplay}
+                  onDelete={handleDeletePost}
+                  onEdit={setEditingPost}
+                >
+                  <ReactionBar
+                    post={post}
+                    onReact={reactions.handleReact}
+                    onComment={openComments}
+                    onShare={handleShare}
+                    isVerified={!!(me?.is_verified || me?.role === "admin")}
+                    variant="resident"
+                    showEmojiPicker={showingEmojiFor === post.id}
+                    onEmojiPickerToggle={setShowingEmojiFor}
+                  />
+                </PostCard>
+
+                {selectedPostId === post.id && (
+                  <CommentDrawer
+                    postId={post.id}
+                    isOpen={isDrawerOpen}
+                    onClose={() => setIsDrawerOpen(false)}
+                    me={me}
+                  />
+                )}
+              </div>
             ))}
           </div>
         </section>
       </div>
-
-      <CommentDrawer
-        postId={selectedPostId}
-        isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
-        me={me}
-      />
 
       {/* Share Modal */}
       <ShareModal

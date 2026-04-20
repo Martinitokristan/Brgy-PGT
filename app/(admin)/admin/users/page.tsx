@@ -191,11 +191,11 @@ export default function AdminUsersPage() {
   };
 
   return (
-    <div className="flex max-w-full flex-1 flex-col gap-4 overflow-x-hidden p-4 pb-8 sm:p-6">
+    <div className="flex max-w-full flex-1 flex-col gap-3 overflow-x-hidden p-4 pb-6 sm:p-5">
       {/* Header */}
       <div className="flex items-center gap-2">
-        <Users className="h-5 w-5 text-slate-700" />
-        <h1 className="text-xl font-bold text-slate-900">Users Management</h1>
+        <Users className="h-4 w-4 text-slate-700" />
+        <h1 className="text-lg font-black text-slate-900">Users Management</h1>
       </div>
 
       {/* Tabs */}
@@ -229,24 +229,24 @@ export default function AdminUsersPage() {
         <div className="flex flex-col gap-3">
           {verLoading && (
             <div className="flex flex-col gap-2">
-              {[0, 1].map((i) => <div key={i} className="h-24 animate-pulse rounded-2xl bg-white" />)}
+              {[0, 1].map((i) => <div key={i} className="h-20 animate-pulse rounded-xl bg-white/60" />)}
             </div>
           )}
           {!verLoading && (verRequests ?? []).length === 0 && (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <ShieldCheck className="mb-3 h-10 w-10 text-emerald-400" />
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <ShieldCheck className="mb-3 h-8 w-8 text-emerald-400" />
               <p className="text-sm font-semibold text-slate-400">No pending verification requests.</p>
             </div>
           )}
           {(verRequests ?? []).map((req) => (
-            <div key={req.id} className="overflow-hidden rounded-[20px] bg-white shadow-sm">
-              <div className="flex items-start gap-4 px-5 py-5">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700 font-bold text-lg">
+            <div key={req.id} className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-100">
+              <div className="flex items-start gap-4 px-4 py-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700 font-bold text-[15px]">
                   {(req.profiles?.name || "?").charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="truncate text-[15px] font-bold text-slate-900">{req.profiles?.name || "Unknown"}</h3>
-                  <p className="truncate text-[13px] text-slate-400">{req.profiles?.email}</p>
+                  <h3 className="truncate text-[14px] font-bold text-slate-900">{req.profiles?.name || "Unknown"}</h3>
+                  <p className="truncate text-[12px] text-slate-400">{req.profiles?.email}</p>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-0.5 text-[11px] font-bold text-blue-700">
                       <FileText className="h-3 w-3" />

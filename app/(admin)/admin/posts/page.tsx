@@ -71,8 +71,8 @@ export default function AdminPostsPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 pb-8 sm:p-6">
-      <h1 className="text-xl font-bold text-slate-900">Manage Posts</h1>
+    <div className="flex flex-1 flex-col gap-3 p-4 pb-6 sm:p-5">
+      <h1 className="text-lg font-black text-slate-900">Manage Posts</h1>
 
       {/* Search */}
       <div className="relative">
@@ -82,7 +82,7 @@ export default function AdminPostsPage() {
           placeholder="Search title or content..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
         />
       </div>
 
@@ -91,7 +91,7 @@ export default function AdminPostsPage() {
         <select
           value={filterUrgency}
           onChange={(e) => setFilterUrgency(e.target.value)}
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm focus:outline-none"
+          className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-700 shadow-sm focus:outline-none"
         >
           <option value="all">All Urgency</option>
           <option value="high">High</option>
@@ -101,7 +101,7 @@ export default function AdminPostsPage() {
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm focus:outline-none"
+          className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-700 shadow-sm focus:outline-none"
         >
           <option value="all">All Status</option>
           <option value="pending">Pending</option>
@@ -111,7 +111,7 @@ export default function AdminPostsPage() {
         <select
           value={filterType}
           onChange={(e) => setFilterType(e.target.value)}
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm focus:outline-none"
+          className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-700 shadow-sm focus:outline-none"
         >
           <option value="all">All Types</option>
           {allPurposes.map((p) => (
@@ -126,14 +126,14 @@ export default function AdminPostsPage() {
       {isLoading && (
         <div className="flex flex-col gap-3">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="h-36 animate-pulse rounded-2xl bg-white" />
+            <div key={i} className="h-32 animate-pulse rounded-xl bg-white" />
           ))}
         </div>
       )}
 
       {/* Empty */}
       {!isLoading && filtered.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="flex flex-col items-center justify-center py-10 text-center">
           <p className="text-sm font-semibold text-slate-400">No posts found.</p>
         </div>
       )}
@@ -146,7 +146,7 @@ export default function AdminPostsPage() {
           return (
             <div
               key={post.id}
-              className="rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm"
+              className="rounded-xl border border-slate-100 bg-white px-4 py-3 shadow-sm"
             >
               {/* Top Row */}
               <div className="mb-2 flex items-center justify-between gap-2">

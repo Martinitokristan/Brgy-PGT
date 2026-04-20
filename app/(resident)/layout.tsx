@@ -120,6 +120,13 @@ export default function ResidentLayout({ children }: { children: ReactNode }) {
   }, []);
   const tl = (key: string) => layoutT[lang]?.[key] ?? layoutT.en[key] ?? key;
 
+  useEffect(() => {
+    // Show sidebar by default on desktop mounts
+    if (window.innerWidth >= 768) {
+      setIsSidebarOpen(true);
+    }
+  }, []);
+
   const hasCheckedRole = useRef(false);
 
   useEffect(() => {
@@ -190,7 +197,7 @@ export default function ResidentLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-slate-950">
+    <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-slate-950 w-full relative z-0">
       {/* Sidebar Overlay */}
       {isSidebarOpen && (
         <div
@@ -201,7 +208,7 @@ export default function ResidentLayout({ children }: { children: ReactNode }) {
 
       {/* Sidebar Drawer — Light Theme */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-72 transform bg-white dark:bg-slate-900 shadow-2xl ring-1 ring-slate-200/80 dark:ring-slate-700 transition-transform duration-300 ease-in-out ${
+        className={`fixed inset-y-0 left-0 z-50 w-72 transform bg-white dark:bg-slate-900 shadow-2xl md:shadow-none ring-1 ring-slate-200/80 dark:ring-slate-700 transition-transform duration-300 ease-in-out ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -373,48 +380,67 @@ export default function ResidentLayout({ children }: { children: ReactNode }) {
       {/* Top App Bar — hidden on verify-account (full-screen flow) */}
       {pathname === "/verify-account" ? null : pathname?.startsWith("/profile/") ? (
         /* On profile pages: only show back + search */
-        <header className="sticky top-0 z-30 flex h-14 w-full items-center justify-between bg-transparent px-4">
-          <button
-            onClick={() => router.back()}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/80 text-slate-700 shadow backdrop-blur-sm hover:bg-white transition-colors"
-          >
-            <ChevronRight className="h-5 w-5 rotate-180" />
-          </button>
-          <Link
-            href="/search"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/80 text-slate-700 shadow backdrop-blur-sm hover:bg-white transition-colors"
-          >
-            <Search className="h-4 w-4" />
-          </Link>
+        <header className={`sticky top-0 z-30 flex h-14 items-center justify-between bg-transparent transition-all duration-300 ${isSidebarOpen ? "md:ml-72" : "md:ml-0"}`}>
+          <div className="flex w-full mx-auto md:max-w-2xl lg:max-w-3xl xl:max-w-4xl px-4 items-center justify-between pointer-events-auto">
+            <button
+              onClick={() => router.back()}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-white/80 text-slate-700 shadow backdrop-blur-sm hover:bg-white transition-colors"
+            >
+              <ChevronRight className="h-5 w-5 rotate-180" />
+            </button>
+            <Link
+              href="/search"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-white/80 text-slate-700 shadow backdrop-blur-sm hover:bg-white transition-colors"
+            >
+              <Search className="h-4 w-4" />
+            </Link>
+          </div>
         </header>
       ) : (
-        <header className="sticky top-0 z-30 flex h-14 w-full items-center justify-between border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
-              <ShieldCheck className="h-4 w-4 text-white" />
+        <header className={`sticky top-0 z-30 flex h-14 items-center justify-between border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 transition-all duration-300 ${isSidebarOpen ? "md:ml-72" : "md:ml-0"}`}>
+          <div className="flex w-full mx-auto md:max-w-2xl lg:max-w-3xl xl:max-w-4xl px-4 items-center justify-between">
+            <div className="flex items-center gap-2">
+              {!isSidebarOpen && (
+                <button
+                  onClick={() => setIsSidebarOpen(true)}
+                  className="mr-2 hidden md:block rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 transition-colors"
+                >
+                  <Menu className="h-5 w-5" />
+                </button>
+              )}
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 md:hidden">
+                <ShieldCheck className="h-4 w-4 text-white" />
+              </div>
+              <span className="text-[15px] font-bold text-slate-900 dark:text-white md:hidden">BarangayPGT</span>
             </div>
-            <span className="text-[15px] font-bold text-slate-900 dark:text-white">BarangayPGT</span>
-          </div>
 
-          {/* Search icon routes to /search page */}
-          <Link
-            href="/search"
-            className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 transition-colors"
-            aria-label="Search residents"
-          >
-            <Search className="h-5 w-5" />
-          </Link>
+            {/* Mobile menu button could be here but we use bottom nav. So just hide title on desktop since sidebar has it */}
+            <div className="hidden md:block flex-1 font-bold text-lg text-slate-900 dark:text-white pl-4 capitalize">
+              {pathname === "/feed" ? tl("home") : pathname?.split("/")[1]?.replace("-", " ") || tl("home")}
+            </div>
+
+            {/* Search icon routes to /search page */}
+            <Link
+              href="/search"
+              className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 transition-colors"
+              aria-label="Search residents"
+            >
+              <Search className="h-5 w-5" />
+            </Link>
+          </div>
         </header>
       )}
 
       {/* Main Content */}
-      <main className={`flex-1 ${pathname === "/verify-account" ? "pb-0" : "pb-16"} ${pathname?.startsWith("/profile/") ? "-mt-14" : ""}`}>
-        {!me && !error ? <PageSkeleton /> : children}
+      <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? "md:ml-72" : "md:ml-0"} ${pathname === "/verify-account" ? "pb-0" : "pb-16 md:pb-0"} ${pathname?.startsWith("/profile/") ? "-mt-14" : ""}`}>
+        <div className="mx-auto w-full md:max-w-2xl lg:max-w-3xl xl:max-w-4xl">
+          {!me && !error ? <PageSkeleton /> : children}
+        </div>
       </main>
 
-      {/* Bottom Tab Navigation — hidden on verify-account */}
+      {/* Bottom Tab Navigation — hidden on verify-account & desktop */}
       {pathname !== "/verify-account" && (
-        <nav className="fixed bottom-0 left-0 right-0 z-30 flex h-16 items-stretch border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+        <nav className="fixed bottom-0 left-0 right-0 z-30 flex h-16 md:hidden items-stretch border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
           {bottomTabs.map((tab) => {
             const Icon = tab.icon;
             const safePath = pathname || "";

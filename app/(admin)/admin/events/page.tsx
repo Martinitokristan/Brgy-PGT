@@ -124,17 +124,17 @@ export default function AdminEventsPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 pb-8 sm:p-6">
+    <div className="flex flex-1 flex-col gap-3 p-4 pb-6 sm:p-5">
       {/* Header */}
       <div className="flex items-center gap-2">
-        <Calendar className="h-5 w-5 text-blue-600" />
-        <h1 className="text-xl font-bold text-slate-900">Barangay Events</h1>
+        <Calendar className="h-4 w-4 text-blue-600" />
+        <h1 className="text-lg font-black text-slate-900">Barangay Events</h1>
       </div>
 
       {/* Post New Event Button */}
       <button
         onClick={openNew}
-        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 py-3.5 text-sm font-bold text-white shadow-md hover:bg-blue-700 transition-colors"
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 text-[13px] font-bold text-white shadow-sm hover:bg-blue-700 transition-colors"
       >
         <Plus className="h-4 w-4" />
         Post New Event
@@ -144,7 +144,7 @@ export default function AdminEventsPage() {
       {isLoading && (
         <div className="flex flex-col gap-3">
           {[0, 1].map((i) => (
-            <div key={i} className="h-40 animate-pulse rounded-2xl bg-white" />
+            <div key={i} className="h-32 animate-pulse rounded-xl bg-white" />
           ))}
         </div>
       )}
@@ -162,51 +162,51 @@ export default function AdminEventsPage() {
         {(events ?? []).map((event) => (
           <div
             key={event.id}
-            className="rounded-2xl border-l-4 border-blue-500 bg-white px-5 py-5 shadow-sm"
+            className="rounded-xl border-l-4 border-blue-500 bg-white px-4 py-4 shadow-sm"
           >
-            <h3 className="text-base font-bold text-slate-900">{event.title}</h3>
+            <h3 className="text-sm font-bold text-slate-900">{event.title}</h3>
             {event.description && (
-              <p className="mt-0.5 text-sm text-slate-500 line-clamp-2">{event.description}</p>
+              <p className="mt-0.5 text-[13px] text-slate-500 line-clamp-2">{event.description}</p>
             )}
 
-            <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-500">
+            <div className="mt-2 flex flex-wrap items-center gap-3 text-[12px] text-slate-500">
               <div className="flex items-center gap-1.5">
-                <Calendar className="h-4 w-4 text-blue-500" />
+                <Calendar className="h-3.5 w-3.5 text-blue-500" />
                 <span>{formatDate(event.event_date)}</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <Clock className="h-4 w-4 text-orange-400" />
+                <Clock className="h-3.5 w-3.5 text-orange-400" />
                 <span>{formatTime(event.event_date)}</span>
               </div>
             </div>
 
             {event.location && (
               <div className="mt-2 flex items-center gap-1.5">
-                <MapPin className="h-4 w-4 text-red-500" />
-                <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
+                <MapPin className="h-3.5 w-3.5 text-red-500" />
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
                   {event.location}
                 </span>
               </div>
             )}
 
             {/* Actions */}
-            <div className="mt-4 flex gap-2">
+            <div className="mt-3 flex gap-2">
               <button
                 onClick={() => setSelectedEvent(event)}
-                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
               >
                 View Details
               </button>
               <button
                 onClick={() => openEdit(event)}
-                className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-colors"
+                className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700 transition-colors"
               >
                 Edit Event
               </button>
               <button
                 onClick={() => handleDelete(event.id)}
                 disabled={deleting === event.id}
-                className="ml-auto rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-100 disabled:opacity-50 transition-colors"
+                className="ml-auto rounded-lg bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-100 disabled:opacity-50 transition-colors"
               >
                 {deleting === event.id ? "..." : "Delete"}
               </button>

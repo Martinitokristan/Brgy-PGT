@@ -922,6 +922,14 @@ export default function ProfileView({ userId }: { userId: string }) {
                         onEmojiPickerToggle={setShowingEmojiFor}
                       />
                     </div>
+                    {selectedPostId === post.id && (
+                      <CommentDrawer 
+                        postId={post.id} 
+                        isOpen={isDrawerOpen} 
+                        onClose={() => setIsDrawerOpen(false)} 
+                        me={user} 
+                      />
+                    )}
                   </div>
                 ))}
                 {posts.length === 0 && (
@@ -1052,13 +1060,8 @@ export default function ProfileView({ userId }: { userId: string }) {
             )}
           </div>
         </div>
-        <CommentDrawer 
-        postId={selectedPostId} 
-        isOpen={isDrawerOpen} 
-        onClose={() => setIsDrawerOpen(false)} 
-        me={me}
-      />
-
+      {/* Remove global comment drawer here */}
+      
       <ImageCropModal
         isOpen={cropState.isOpen}
         file={cropState.file}

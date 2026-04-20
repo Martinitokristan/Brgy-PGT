@@ -101,7 +101,7 @@ function AreaChart({
       {yLines.map((yl, i) => (
         <g key={i}>
           <line x1={padL} y1={yl.y} x2={W - padR} y2={yl.y} stroke="#e2e8f0" strokeWidth="0.8" strokeDasharray={i === 0 ? "0" : "4 3"} />
-          <text x={padL - 8} y={yl.y + 3.5} textAnchor="end" fontSize="10" fill="#94a3b8" fontWeight="600">
+          <text x={padL - 8} y={yl.y + 3} textAnchor="end" fontSize="9" fill="#94a3b8" fontWeight="600">
             {formatAxisLabel(Math.round(yl.val))}
           </text>
         </g>
@@ -114,7 +114,7 @@ function AreaChart({
       {points.map((p, i) => (
         <g key={i}>
           <circle cx={p.x} cy={p.y} r="4" fill="white" stroke={color} strokeWidth="2.5" />
-          <text x={p.x} y={H - 8} textAnchor="middle" fontSize="10" fill="#64748b" fontWeight="600">
+          <text x={p.x} y={H - 8} textAnchor="middle" fontSize="9" fill="#64748b" fontWeight="600">
             {data[i].label}
           </text>
         </g>
@@ -184,7 +184,7 @@ function DonutChart({
         y={cy + 1}
         textAnchor="middle"
         dominantBaseline="middle"
-        fontSize={size * 0.14}
+        fontSize={size * 0.12}
         fontWeight="700"
         fill="#1e293b"
       >
@@ -275,27 +275,27 @@ export default function AdminDashboardPage() {
   }));
 
   return (
-    <div className="flex flex-1 flex-col gap-5 p-4 pb-8 sm:p-6">
+    <div className="flex flex-1 flex-col gap-4 p-4 pb-6 sm:p-5">
       {/* Page Title */}
       <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 shadow-md shadow-blue-500/30">
-          <Activity className="h-5 w-5 text-white" />
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-600 shadow-md shadow-blue-500/30">
+          <Activity className="h-4 w-4 text-white" />
         </div>
-        <h1 className="text-xl font-black text-slate-900 dark:text-white">Admin Dashboard</h1>
+        <h1 className="text-lg font-black text-slate-900 dark:text-white">Admin Dashboard</h1>
       </div>
 
       {/* Action Buttons */}
       <div className="flex flex-col gap-3 sm:flex-row">
         <Link
           href="/admin/posts"
-          className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-blue-600 py-3.5 text-sm font-bold text-white shadow-md hover:bg-blue-700 transition-colors"
+          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 text-[13px] font-bold text-white shadow-md hover:bg-blue-700 transition-colors"
         >
           <FileText className="h-4 w-4" />
           Manage All Posts
         </Link>
         <Link
           href="/admin/events"
-          className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-blue-600 py-3.5 text-sm font-bold text-white shadow-md hover:bg-blue-700 transition-colors"
+          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 text-[13px] font-bold text-white shadow-md hover:bg-blue-700 transition-colors"
         >
           <Calendar className="h-4 w-4" />
           Manage Events
@@ -309,97 +309,101 @@ export default function AdminDashboardPage() {
           return (
             <div
               key={card.label}
-              className={`flex flex-col gap-3 rounded-2xl border-t-4 ${card.bg} px-4 py-5 shadow-sm ${card.color}`}
+              className={`flex flex-col gap-2 rounded-xl border-t-[3px] ${card.bg} px-3 py-3 shadow-sm ${card.color}`}
             >
-              <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${card.iconBg}`}>
-                <Icon className={`h-4.5 w-4.5 ${card.iconColor}`} />
+              <div className={`flex h-7 w-7 items-center justify-center rounded-lg ${card.iconBg}`}>
+                <Icon className={`h-3.5 w-3.5 ${card.iconColor}`} />
               </div>
               {isLoading ? (
-                <div className="h-8 w-16 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+                <div className="h-5 w-10 animate-pulse rounded-md bg-slate-100 dark:bg-slate-800" />
               ) : (
-                <p className={`text-3xl font-black ${card.valueColor}`}>{card.value}</p>
+                <p className={`text-xl font-black ${card.valueColor}`}>{card.value}</p>
               )}
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">{card.label}</p>
+              <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">{card.label}</p>
             </div>
           );
         })}
       </div>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {/* Posts by Purpose */}
-        <div className="rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-          <p className="mb-4 text-sm font-bold text-slate-800 dark:text-white">Posts by Purpose</p>
-          <div className="flex items-center gap-5">
-            <DonutChart data={byPurposeData} size={110} />
-            <div className="flex flex-col gap-2.5 min-w-0 flex-1">
+        <div className="rounded-xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+          <p className="mb-3 text-[13px] font-bold text-slate-800 dark:text-white">Posts by Purpose</p>
+          <div className="flex items-center gap-4">
+            <DonutChart data={byPurposeData} size={90} />
+            <div className="flex flex-col gap-2 min-w-0 flex-1">
               {byPurposeData.map((d) => {
                 const total = byPurposeData.reduce((s, x) => s + x.value, 0);
                 const pct = total > 0 ? Math.round((d.value / total) * 100) : 0;
                 return (
                   <div key={d.label} className="flex items-center gap-2 min-w-0">
-                    <div className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: d.color }} />
-                    <span className="truncate text-[11px] font-semibold text-slate-600 dark:text-slate-400 capitalize">{d.label}</span>
-                    <span className="ml-auto text-[11px] font-black text-slate-800 dark:text-white">{d.value} <span className="font-medium text-slate-400">({pct}%)</span></span>
+                    <div className="h-2 w-2 shrink-0 rounded-full" style={{ background: d.color }} />
+                    <span className="truncate text-[10px] font-semibold text-slate-600 dark:text-slate-400 capitalize">{d.label}</span>
+                    <span className="ml-auto text-[10px] font-black text-slate-800 dark:text-white">{d.value} <span className="font-medium text-slate-400">({pct}%)</span></span>
                   </div>
                 );
               })}
-              {byPurposeData.length === 0 && <p className="text-xs text-slate-400">No posts yet</p>}
+              {byPurposeData.length === 0 && <p className="text-[10px] text-slate-400">No posts yet</p>}
             </div>
           </div>
         </div>
 
         {/* Posts by Urgency */}
-        <div className="rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-          <p className="mb-4 text-sm font-bold text-slate-800 dark:text-white">Posts by Urgency</p>
-          <div className="flex items-center gap-5">
-            <DonutChart data={byUrgencyData} size={110} />
-            <div className="flex flex-col gap-2.5 min-w-0 flex-1">
+        <div className="rounded-xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+          <p className="mb-3 text-[13px] font-bold text-slate-800 dark:text-white">Posts by Urgency</p>
+          <div className="flex items-center gap-4">
+            <DonutChart data={byUrgencyData} size={90} />
+            <div className="flex flex-col gap-2 min-w-0 flex-1">
               {byUrgencyData.map((d) => {
                 const total = byUrgencyData.reduce((s, x) => s + x.value, 0);
                 const pct = total > 0 ? Math.round((d.value / total) * 100) : 0;
                 return (
                   <div key={d.label} className="flex items-center gap-2 min-w-0">
-                    <div className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: d.color }} />
-                    <span className="truncate text-[11px] font-semibold text-slate-600 dark:text-slate-400 capitalize">{d.label}</span>
-                    <span className="ml-auto text-[11px] font-black text-slate-800 dark:text-white">{d.value} <span className="font-medium text-slate-400">({pct}%)</span></span>
+                    <div className="h-2 w-2 shrink-0 rounded-full" style={{ background: d.color }} />
+                    <span className="truncate text-[10px] font-semibold text-slate-600 dark:text-slate-400 capitalize">{d.label}</span>
+                    <span className="ml-auto text-[10px] font-black text-slate-800 dark:text-white">{d.value} <span className="font-medium text-slate-400">({pct}%)</span></span>
                   </div>
                 );
               })}
-              {byUrgencyData.length === 0 && <p className="text-xs text-slate-400">No posts yet</p>}
+              {byUrgencyData.length === 0 && <p className="text-[10px] text-slate-400">No posts yet</p>}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Status Overview — Area Chart */}
-      <div className="rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-        <p className="mb-2 text-sm font-bold text-slate-800 dark:text-white">Status Overview</p>
-        <AreaChart
-          data={[
-            { label: "Resolved", value: stats?.resolvedPosts ?? 0 },
-            { label: "In Progress", value: stats?.inProgressPosts ?? 0 },
-            { label: "Pending", value: stats?.pendingPosts ?? 0 },
-          ]}
-          color="#10b981"
-          gradientId="statusGrad"
-        />
-      </div>
-
-      {/* Users Growth — Area Chart (Blue) */}
-      <div className="rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-        <div className="mb-2 flex items-center justify-between">
-          <p className="text-sm font-bold text-slate-800 dark:text-white">Users Growth</p>
-          <div className="flex items-center gap-1.5 rounded-full bg-blue-50 dark:bg-blue-900/30 px-3 py-1">
-            <Users className="h-3.5 w-3.5 text-blue-600" />
-            <span className="text-[11px] font-bold text-blue-600">{stats?.totalResidents ?? 0} total</span>
-          </div>
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        {/* Status Overview — Area Chart */}
+        <div className="rounded-xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+          <p className="mb-2 text-[13px] font-bold text-slate-800 dark:text-white">Status Overview</p>
+          <AreaChart
+            height={120}
+            data={[
+              { label: "Resolved", value: stats?.resolvedPosts ?? 0 },
+              { label: "In Progress", value: stats?.inProgressPosts ?? 0 },
+              { label: "Pending", value: stats?.pendingPosts ?? 0 },
+            ]}
+            color="#10b981"
+            gradientId="statusGrad"
+          />
         </div>
-        <AreaChart
-          data={(stats?.userGrowth ?? []).slice().reverse().map((g) => ({ label: g.month, value: g.count }))}
-          color="#2563eb"
-          gradientId="usersGrad"
-        />
+
+        {/* Users Growth — Area Chart (Blue) */}
+        <div className="rounded-xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-[13px] font-bold text-slate-800 dark:text-white">Users Growth</p>
+            <div className="flex items-center gap-1.5 rounded-full bg-blue-50 dark:bg-blue-900/30 px-2 py-1">
+              <Users className="h-3 w-3 text-blue-600" />
+              <span className="text-[10px] font-bold text-blue-600">{stats?.totalResidents ?? 0} total</span>
+            </div>
+          </div>
+          <AreaChart
+            height={120}
+            data={(stats?.userGrowth ?? []).slice().reverse().map((g) => ({ label: g.month, value: g.count }))}
+            color="#2563eb"
+            gradientId="usersGrad"
+          />
+        </div>
       </div>
     </div>
   );

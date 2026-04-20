@@ -48,9 +48,10 @@ export default function CommentDrawer({ postId, isOpen, onClose, me, highlightCo
   const isAdmin = me?.role === "admin";
   const profileBaseUrl = isAdmin ? "/admin/users" : "/profile";
 
-  // Lock background (feed) scroll while drawer is open
+  // Lock background (feed) scroll while drawer is open (mobile only)
   useEffect(() => {
     if (!isOpen) return;
+    if (window.innerWidth >= 768) return;
 
     const body = document.body;
     const docEl = document.documentElement;
@@ -213,7 +214,7 @@ export default function CommentDrawer({ postId, isOpen, onClose, me, highlightCo
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 z-50 bg-black/50"
+            className="fixed inset-0 z-50 bg-black/50 md:hidden"
           />
           <motion.div
             initial={{ y: "100%" }}
@@ -225,20 +226,28 @@ export default function CommentDrawer({ postId, isOpen, onClose, me, highlightCo
             dragElastic={{ top: 0, bottom: 0.3 }}
             dragMomentum={false}
             onDragEnd={(_, info) => {
+              if (window.innerWidth >= 768) return;
               if (info.offset.y > 120 || (info.velocity.y > 500 && info.offset.y > 40)) {
                 onClose();
               }
             }}
             style={{ willChange: "transform" }}
-            className="fixed inset-x-0 bottom-0 z-[60] flex h-[88vh] flex-col rounded-t-[20px] bg-white dark:bg-slate-900 shadow-2xl sm:h-[75vh]"
+            className={`fixed inset-x-0 bottom-0 z-[60] flex h-[88vh] flex-col rounded-t-[20px] bg-white dark:bg-slate-900 shadow-2xl sm:h-[75vh] md:static md:h-[500px] md:max-h-[60vh] md:rounded-xl md:shadow-inner md:border md:border-slate-200 dark:md:border-slate-700/60 md:-mt-2 md:transform-none md:z-0 md:transition-none`}
+            onAnimationStart={() => {
+              if (window.innerWidth >= 768) {
+                // Remove framer transform instantly on desktop to prevent shifting out
+                const el = document.querySelector(".md\\:transform-none") as HTMLElement;
+                if (el) el.style.transform = "none";
+              }
+            }}
           >
             {/* Handle */}
-            <div className="flex w-full shrink-0 items-center justify-center py-3">
+            <div className="flex w-full shrink-0 items-center justify-center py-3 md:hidden">
               <div className="h-1.5 w-12 rounded-full bg-slate-200 dark:bg-slate-700" />
             </div>
 
             {/* Header */}
-            <div className="flex shrink-0 items-center justify-between border-b border-slate-100 dark:border-slate-800 px-5 pb-3">
+            <div className="flex shrink-0 items-center justify-between border-b border-slate-100 dark:border-slate-800 px-5 pb-3 md:pt-4 md:bg-slate-50 dark:md:bg-slate-900/50 md:rounded-t-xl">
               <h2 className="text-[17px] font-bold text-slate-900 dark:text-slate-100">
                 Comments{comments && comments.length > 0 ? ` · ${comments.length}` : ""}
               </h2>

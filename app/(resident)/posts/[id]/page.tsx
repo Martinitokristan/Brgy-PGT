@@ -165,15 +165,15 @@ export default function PostDetailPage() {
             onEmojiPickerToggle={setShowingEmojiFor}
           />
         </PostCard>
-      </div>
 
-      <CommentDrawer
-        postId={postId}
-        isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
-        me={me}
-        highlightCommentId={highlightCommentId}
-      />
+        <CommentDrawer
+          postId={postId}
+          isOpen={isDrawerOpen}
+          onClose={() => setIsDrawerOpen(false)}
+          me={me}
+          highlightCommentId={highlightCommentId}
+        />
+      </div>
 
       <ShareModal
         sharePostId={sharePostId}

@@ -165,37 +165,40 @@ export default function AdminFeedPage() {
             )}
 
             {(posts ?? []).map((post) => (
-              <PostCard
-                key={post.id}
-                post={post}
-                variant="admin"
-                isAdmin={true}
-                autoplayVideos={me?.autoplay_videos ?? true}
-                onToggleAutoplayVideos={handleToggleAutoplay}
-                onVideoClick={setVideoLightboxSrc}
-                onDelete={handleDeletePost}
-                onStatusUpdate={(p) => { setStatusModal(p); setNewStatus(p.status || "pending"); setAdminResponse(""); }}
-              >
-                <ReactionBar
+              <div key={post.id} className="relative flex flex-col gap-0">
+                <PostCard
                   post={post}
-                  onReact={reactions.handleReact}
-                  onComment={openComments}
-                  onShare={handleShare}
-                  isVerified={true}
                   variant="admin"
-                />
-              </PostCard>
+                  isAdmin={true}
+                  autoplayVideos={me?.autoplay_videos ?? true}
+                  onToggleAutoplayVideos={handleToggleAutoplay}
+                  onVideoClick={setVideoLightboxSrc}
+                  onDelete={handleDeletePost}
+                  onStatusUpdate={(p) => { setStatusModal(p); setNewStatus(p.status || "pending"); setAdminResponse(""); }}
+                >
+                  <ReactionBar
+                    post={post}
+                    onReact={reactions.handleReact}
+                    onComment={openComments}
+                    onShare={handleShare}
+                    isVerified={true}
+                    variant="admin"
+                  />
+                </PostCard>
+
+                {selectedPostId === post.id && (
+                  <CommentDrawer 
+                    postId={post.id} 
+                    isOpen={isDrawerOpen} 
+                    onClose={() => setIsDrawerOpen(false)} 
+                    me={me}
+                  />
+                )}
+              </div>
             ))}
           </div>
         </section>
       </div>
-
-      <CommentDrawer 
-        postId={selectedPostId} 
-        isOpen={isDrawerOpen} 
-        onClose={() => setIsDrawerOpen(false)} 
-        me={me}
-      />
 
       {/* Status Update Modal */}
       {statusModal && (

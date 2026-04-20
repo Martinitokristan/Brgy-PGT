@@ -67,17 +67,17 @@ export default function AdminSmsPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-5 p-4 pb-8 sm:p-6">
+    <div className="flex flex-1 flex-col gap-4 p-4 pb-6 sm:p-5">
       {/* Send Form Card */}
-      <div className="rounded-2xl bg-white p-5 shadow-sm">
-        <div className="mb-5 flex items-center gap-2">
-          <Send className="h-5 w-5 text-blue-600" />
-          <h1 className="text-lg font-bold text-slate-900">Send SMS Message</h1>
+      <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+        <div className="mb-4 flex items-center gap-2">
+          <Send className="h-4 w-4 text-blue-600" />
+          <h1 className="text-lg font-black text-slate-900">Send SMS Message</h1>
         </div>
 
         <form onSubmit={handleSend} className="space-y-4">
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-slate-600">
+            <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500">
               To (Phone Number)
             </label>
             <input
@@ -86,28 +86,30 @@ export default function AdminSmsPage() {
               value={to}
               onChange={(e) => setTo(e.target.value)}
               placeholder="e.g. +639171234567"
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[13px] text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-slate-600">Message</label>
+            <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              Message
+            </label>
             <textarea
               rows={4}
               required
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Type your message here..."
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 resize-none"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[13px] text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 resize-none"
             />
           </div>
 
           <button
             type="submit"
             disabled={sending}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 text-sm font-bold text-white shadow-md hover:bg-blue-700 disabled:opacity-60 transition-colors"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 text-[13px] font-bold text-white shadow-sm hover:bg-blue-700 disabled:opacity-60 transition-colors"
           >
-            <Send className="h-4 w-4" />
+            <Send className="h-3.5 w-3.5" />
             {sending ? "Sending…" : "Send SMS"}
           </button>
 
@@ -125,10 +127,10 @@ export default function AdminSmsPage() {
       </div>
 
       {/* SMS Logs */}
-      <div className="rounded-2xl bg-white p-5 shadow-sm">
+      <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
         <div className="mb-4 flex items-center gap-2">
-          <History className="h-5 w-5 text-slate-600" />
-          <h2 className="text-base font-bold text-slate-900">SMS Logs</h2>
+          <History className="h-4 w-4 text-slate-600" />
+          <h2 className="text-sm font-bold text-slate-900">SMS Logs</h2>
         </div>
 
         {isLoading && (
